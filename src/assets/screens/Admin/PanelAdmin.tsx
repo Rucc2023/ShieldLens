@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Shield, Users, Settings, LogOut, 
   Search, Download, Plus, MoreVertical,
-  BarChart2, Lock, FileText, PieChart
+  BarChart2, Lock, FileText, PieChart, X
 } from 'lucide-react';
 
 /* ─── Interfaces ────────────────────────────────────────────────── */
@@ -39,17 +39,12 @@ const DistributionChart = () => (
     </div>
     
     <div className="flex flex-col md:flex-row items-center justify-around gap-8 py-4">
-      {/* Gráfico SVG recreado */}
       <div className="relative w-40 h-40">
         <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
           <circle cx="18" cy="18" r="16" fill="transparent" stroke="#E2E8F0" strokeWidth="3.5" />
-          {/* Aprobadas 69% */}
           <circle cx="18" cy="18" r="16" fill="transparent" stroke="#22C55E" strokeWidth="3.8" strokeDasharray="69 100" />
-          {/* Rechazadas 13% (offset 69) */}
           <circle cx="18" cy="18" r="16" fill="transparent" stroke="#EF4444" strokeWidth="3.8" strokeDasharray="13 100" strokeDashoffset="-69" />
-          {/* En Revisión 7% (offset 82) */}
           <circle cx="18" cy="18" r="16" fill="transparent" stroke="#F59E0B" strokeWidth="3.8" strokeDasharray="7 100" strokeDashoffset="-82" />
-          {/* Pendientes 12% (offset 89) */}
           <circle cx="18" cy="18" r="16" fill="transparent" stroke="#64748B" strokeWidth="3.8" strokeDasharray="11 100" strokeDashoffset="-89" />
         </svg>
       </div>
@@ -106,6 +101,7 @@ const RecentActivity = () => {
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('resumen');
+  const [showModal, setShowModal] = useState(false);
 
   const [userList] = useState<User[]>([
     { id: 1, name: 'Pedro Sánchez', email: 'p.sanchez@segurosvida.com', role: 'Analista', status: 'Activo' },
@@ -132,7 +128,54 @@ const AdminPanel = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D] flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D] flex flex-col lg:flex-row relative">
+      
+      {/* MODAL FORMULARIO AJUSTADORES */}
+      {showModal && (
+        <div className="fixed inset-0 bg-[#0B1E3D]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Nuevo Ajustador</h2>
+                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Nombre Completo</label>
+                  <input type="text" placeholder="Ej. Juan Pérez" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                </div>
+                
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Número de Empleado</label>
+                  <input type="text" placeholder="Ej. AJ-2024-001" className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 ml-1">Rol de Usuario</label>
+                  <select className="w-full px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none cursor-pointer">
+                    <option value="Analista">Analista</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Auditor">Auditor</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-[#0B1E3D] font-bold rounded-2xl text-xs uppercase tracking-widest transition-all">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="flex-1 py-3 bg-[#0B1E3D] hover:bg-slate-800 text-white font-bold rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-blue-900/20 transition-all">
+                    Guardar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <aside className="w-full lg:w-64 shrink-0 bg-[#0B1E3D] lg:min-h-screen flex flex-col p-8 gap-8">
         <div>
@@ -163,7 +206,6 @@ const AdminPanel = () => {
           ))}
         </nav>
 
-  
         <button onClick={() => navigate('/')} className="mt-auto flex items-center gap-2 text-white/25 hover:text-red-400 transition-colors text-xs font-semibold">
           <LogOut size={14} /> Salir
         </button>
@@ -205,7 +247,10 @@ const AdminPanel = () => {
                 <button onClick={exportToCSV} className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B1E3D] px-5 py-2.5 rounded-xl text-xs font-semibold">
                   <Download size={13} /> Exportar CSV
                 </button>
-                <button className="flex items-center gap-2 bg-[#0B1E3D] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-blue-900/10">
+                <button 
+                  onClick={() => setShowModal(true)} 
+                  className="flex items-center gap-2 bg-[#0B1E3D] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-blue-900/10 transition-all active:scale-95"
+                >
                   <Plus size={13} /> Nuevo Usuario
                 </button>
               </div>
