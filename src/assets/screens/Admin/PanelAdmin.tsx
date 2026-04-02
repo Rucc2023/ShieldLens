@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Shield, Users, LogOut, Plus, MoreVertical,
-  BarChart2, X, ChevronDown, Lock
+  BarChart2, X, ChevronDown
 } from 'lucide-react';
 
 /* ─── Interfaces ────────────────────────────────────────────────── */
@@ -23,6 +23,16 @@ interface Cliente {
   is_deleted: boolean;
 }
 
+interface LogForense {
+  id_log: number;
+  usuario_ejecuta: string;
+  fecha_hora_utc: string;
+  accion_realizada: string;
+  resultado: string;
+  ip_origin: string;
+  modulo_responsable: string;
+}
+
 /* ─── Componentes del Dashboard ─────────────────────────────────── */
 
 const MetricCard = ({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) => (
@@ -36,27 +46,33 @@ const MetricCard = ({ label, value, sub, accent }: { label: string; value: strin
   </div>
 );
 
-const RecentActivity = () => {
-  const items = [
-    { icon: Users, label: "Nuevo ajustador", detail: "Jared Benjamin · Analista", time: "Ahora", color: "bg-blue-50 text-blue-500" },
-    { icon: Lock, label: "Cifrado completado", detail: "AES-256 aplicado a 15 clientes", time: "12 min", color: "bg-emerald-50 text-emerald-500" },
-  ];
+const RecentActivity = ({ logs }: { logs: LogForense[] }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm">
-      <h2 className="text-sm font-bold text-[#0B1E3D] mb-6">Actividad Reciente</h2>
-      <div className="space-y-4">
-        {items.map((item, i) => (
-          <div key={i} className="flex gap-3 items-start">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${item.color}`}>
-              <item.icon size={13} />
+      <h2 className="text-sm font-bold text-[#0B1E3D] mb-6">Auditoría Forense Reciente</h2>
+      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+        {logs.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-4">No hay logs registrados.</p>
+        ) : (
+          logs.map((log) => (
+            <div key={log.id_log} className="flex gap-3 items-start border-b border-slate-50 pb-3 last:border-0">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                log.resultado === 'exito' ? 'bg-emerald-50 text-emerald-500' : 'bg-red-50 text-red-500'
+              }`}>
+                {log.resultado === 'exito' ? <Shield size={13} /> : <X size={13} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-[#0B1E3D]">{log.accion_realizada}</p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  ID: {log.usuario_ejecuta || 'Sistema'} • IP: {log.ip_origin}
+                </p>
+              </div>
+              <span className="text-[10px] text-slate-300 whitespace-nowrap">
+                {new Date(log.fecha_hora_utc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-[#0B1E3D]">{item.label}</p>
-              <p className="text-[11px] text-slate-400 truncate">{item.detail}</p>
-            </div>
-            <span className="text-[10px] text-slate-300 whitespace-nowrap">{item.time}</span>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -74,6 +90,8 @@ const AdminPanel = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [logs, setLogs] = useState<LogForense[]>([]);
+
   const [formData, setFormData] = useState({ 
     nombre: '', 
     numero_empleado: '', 
@@ -84,13 +102,19 @@ const AdminPanel = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resAju, resCli] = await Promise.all([
+      const [resAju, resCli, resLogs] = await Promise.all([
         fetch('http://localhost:5000/api/auth/ajustadores'),
-        fetch('http://localhost:5000/api/auth/clientes') 
+        fetch('http://localhost:5000/api/auth/clientes'),
+        fetch('http://localhost:5000/api/auth/logs') 
       ]);
       if (resAju.ok) setAjustadores(await resAju.json());
       if (resCli.ok) setClientes(await resCli.json());
-    } catch (err) {
+      if (resLogs.ok) {
+      const data = await resLogs.json();
+      // Ordenamos para ver los más recientes primero (basado en fecha_hora_utc)
+      setLogs(data.slice(0, 50)); 
+    }
+  } catch (err) {
       console.error("Error ShieldLens:", err);
     } finally { setLoading(false); }
   };
@@ -237,10 +261,10 @@ const AdminPanel = () => {
         {activeTab === 'resumen' ? (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard label="Usuarios Activos" value="247" sub="+12% mensual" accent="bg-blue-500" />
+              <MetricCard label="Usuarios Activos" value={String(ajustadores.length + clientes.length)} sub="+12% mensual" accent="bg-blue-500" />
               <MetricCard label="Casos Cifrados" value="1,243" sub="Protección Azure" accent="bg-emerald-500" />
             </div>
-            <RecentActivity />
+            <RecentActivity logs={logs} />
           </div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-4xl overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-500">

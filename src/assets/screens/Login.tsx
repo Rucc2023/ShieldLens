@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import axios, { AxiosError } from 'axios';import { 
   Mail, Lock, ShieldCheck, 
   X, User, Phone, ArrowRight, CheckCircle2, MapPin
 } from 'lucide-react';
+import { useUser } from '../../context/useUser';
 
 const LoginScreen = () => {
-  const [email, setEmail]       = useState('');
+  //const [email, setEmail]       = useState('');
+  const [identificador, setIdentificador] = useState('')
   const [password, setPassword] = useState('');
   const [showRegister, setShowRegister] = useState(false);
   const [regDone, setRegDone]   = useState(false);
@@ -20,29 +22,40 @@ const LoginScreen = () => {
     password: '' 
   });
   
+  const { loginUser } = useUser();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post('http://localhost:5000/api/auth/login', {
+        identificador: identificador, 
+        password: password
       });
 
-      const data = await response.json();
+      if (response.data.success) {
+        const { user, token } = response.data;
 
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        navigate('/portal');
+        // IMPORTANTE: Aquí enviamos el UUID (ej. CAE7DB64...) al Contexto Global
+        // Esto permite que 'usuario_ejecuta' se llene correctamente en tus logs
+        loginUser(user.id, user.rol); 
+
+        // Guardado local opcional para persistencia tras recargar
+        localStorage.setItem('token', token);
+        localStorage.setItem('userId', user.id);
+
+        // Redirección por Rol según la BD
+        if (user.rol === 'Admin') navigate('/admin');
+        else if (user.rol === 'Analista' || user.rol === 'Auditor') navigate('/analyst');
+        else navigate('/portal');
+        
       } else {
-        alert(data.message || "Credenciales incorrectas");
+        alert(response.data.message || "Credenciales incorrectas");
       }
-    } catch (err) {
-      console.error("Error de conexión:", err);
-      alert("No se pudo conectar con el servidor ShieldLens en el puerto 5000."); // Error detectado
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ message: string }>;
+      console.error("Error en el acceso a ShieldLens");
+      alert(err.response?.data?.message || "Error de conexión con el servidor");
     }
   };
 
@@ -110,7 +123,7 @@ const LoginScreen = () => {
               <label className="text-xs font-bold text-[#0B1E3D]/70 ml-1 uppercase">Correo Electrónico</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0B1E3D]/40" size={16} />
-                <input required type="email" placeholder="usuario@seguros.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                <input required type="text" placeholder="usuario@seguros.com" value={identificador} onChange={(e) => setIdentificador(e.target.value)}
                   className="w-full pl-11 pr-5 py-3.5 bg-white/40 text-[#0B1E3D] border border-white/40 rounded-xl outline-none focus:bg-white/60 transition-all text-sm shadow-sm" />
               </div>
             </div>
