@@ -118,11 +118,11 @@ const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: 
           </Field>
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Número de póliza</label>
+          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Monto Reclamado</label>
           <Field icon={ShieldCheck}>
             <input
-              type="text"
-              placeholder="Ej. VIP-9902"
+              type="number"
+              placeholder="Ej. 10000"
               value={data.policy}
               onChange={(e) => setData({ ...data, policy: e.target.value })}
               className={inputCls}
@@ -245,45 +245,98 @@ const StepPhotos = ({
   </div>
 );
 
-/* ── Step 2: AI ── */
-const StepAI = ({ files, onNext, onBack }: { files: File[]; onNext: () => void; onBack: () => void }) => {
+/* ── Step 2: AI (Integrado con el envío a SQL Server) ── */
+const StepAI = ({ 
+  files, 
+  data, 
+  onNext, 
+  onBack 
+}: { 
+  files: File[]; 
+  data: ClaimData; 
+  onNext: () => void; 
+  onBack: () => void 
+}) => {
   const [phase, setPhase] = useState<number>(0);
   const [result, setResult] = useState<AIAnalysis | null>(null);
-  const [error, setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // 1. Efecto para llamar a Vertex AI al cargar el componente
   useEffect(() => {
-    const run = async () => {
+    const runAnalysis = async () => {
       try {
         setPhase(1);
         const base64 = await new Promise<string>((res, rej) => {
           const reader = new FileReader();
           reader.readAsDataURL(files[0]);
-          reader.onload  = () => res((reader.result as string).split(',')[1]);
+          reader.onload = () => res((reader.result as string).split(',')[1]);
           reader.onerror = rej;
         });
 
         const response = await fetch('http://localhost:5000/api/ia/analizar', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'x-auth-token': localStorage.getItem('token') || '' 
+          },
           body: JSON.stringify({ imageBase64: base64 }),
         });
 
-        const data = await response.json();
-        if (data.success) { setResult(data.analysis); setPhase(2); }
-        else throw new Error(data.msg || 'Error de IA');
+        const resData = await response.json();
+        if (resData.success) { 
+          setResult(resData.analysis); 
+          setPhase(2); 
+        } else {
+          throw new Error(resData.msg || 'Error de IA');
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
         setPhase(0);
       }
     };
-    if (phase === 0 && !result && !error) run();
+
+    if (phase === 0 && !result && !error) runAnalysis();
   }, [files, phase, result, error]);
 
-  const score    = (result?.confianza || 0) * 100;
+  // 2. Función para guardar la reclamación final en SQL Server
+  const handleFinalizar = async () => {
+    if (!result) return;
+    setIsSaving(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/incidentes/crear', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-auth-token': localStorage.getItem('token') || '' 
+        },
+        body: JSON.stringify({
+          referencia_poliza: data.location, // O el campo que uses para identificar el ID de referencia
+          monto_reclamado: parseFloat(data.policy), // Mapeo a monto_reclamado (DECIMAL)
+          score_confianza_ia: result.confianza, // El score de 0 a 1
+          veredicto_ia: result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO'
+        }),
+      });
+
+      const saveRes = await response.json();
+      if (saveRes.success) {
+        onNext(); // Avanzar al StepConfirm (Paso 4)
+      } else {
+        throw new Error(saveRes.msg || 'No se pudo guardar la reclamación');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al conectar con la base de datos');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const score = (result?.confianza || 0) * 100;
   const isFraude = result?.etiqueta === 'Falsas';
 
   const scoreColor = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
-  const barColor   = score >= 80 ? 'bg-emerald-400'  : score >= 60 ? 'bg-amber-400'  : 'bg-red-500';
+  const barColor = score >= 80 ? 'bg-emerald-400' : score >= 60 ? 'bg-amber-400' : 'bg-red-500';
 
   return (
     <div className="space-y-7">
@@ -313,49 +366,57 @@ const StepAI = ({ files, onNext, onBack }: { files: File[]; onNext: () => void; 
         </div>
       </div>
 
-      {/* Result */}
+      {/* Result Card */}
       {phase === 2 && result && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6">
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Resultado del Análisis</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Score de Confianza</span>
               <span className={`text-2xl font-bold ${scoreColor}`}>{score.toFixed(1)}%</span>
             </div>
             <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
               <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${score}%` }} />
             </div>
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <span className="text-xs text-slate-400 font-medium">Veredicto</span>
-              <span className={`text-sm font-bold ${isFraude ? 'text-red-600' : 'text-emerald-600'}`}>
-                {isFraude ? 'Posible fraude' : 'Siniestro real'}
+              <span className="text-xs text-slate-400 font-medium">Veredicto IA</span>
+              <span className={`text-sm font-bold uppercase tracking-wide ${isFraude ? 'text-red-600' : 'text-emerald-600'}`}>
+                {isFraude ? 'SOSPECHOSO' : 'SINIESTRO REAL'}
               </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Error */}
+      {/* Error Message */}
       {error && (
-        <div className="flex items-start gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
+        <div className="flex items-start gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl animate-pulse">
           <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-red-600 font-semibold leading-relaxed">{error}</p>
         </div>
       )}
 
+      {/* Acciones */}
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          disabled={phase === 1}
+          disabled={phase === 1 || isSaving}
           className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-[#0B1E3D] font-semibold rounded-xl transition-all text-sm flex items-center gap-2"
         >
           <ArrowLeft size={15} /> Atrás
         </button>
         <button
-          onClick={onNext}
-          disabled={phase !== 2}
-          className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] text-sm"
+          onClick={handleFinalizar}
+          disabled={phase !== 2 || isSaving}
+          className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2"
         >
-          Confirmar y enviar
+          {isSaving ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Guardando...
+            </>
+          ) : (
+            <>Confirmar y enviar</>
+          )}
         </button>
       </div>
     </div>
@@ -442,7 +503,7 @@ const NewClaim = () => {
           <StepBar current={step} />
           {step === 0 && <StepDetails data={data} setData={setData} onNext={() => setStep(1)} />}
           {step === 1 && <StepPhotos  files={files} setFiles={setFiles} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-          {step === 2 && <StepAI      files={files} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+          {step === 2 && <StepAI     files={files} data={data} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
           {step === 3 && <StepConfirm navigate={navigate} />}
         </div>
 
