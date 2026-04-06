@@ -1,13 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, CheckCircle2, Car, Home, Umbrella,
-  Zap, Package, ShieldCheck, Upload, X, FileImage,
-  ScanSearch, Brain, Clock, AlertTriangle, Sparkles
+  ArrowLeft, ArrowRight, CheckCircle2, Car, Home,
+  Zap, Package, ShieldCheck, Upload, X,
+  Brain, AlertTriangle, ShieldAlert, MapPin, Calendar, FileText
 } from 'lucide-react';
 
-// --- CONFIGURACIÓN DE TIPOS PARA TYPESCRIPT ---
-// Agregamos interfaces para que el editor deje de marcar "any"
+// --- INTERFACES ---
 interface ClaimData {
   type: string;
   date: string;
@@ -16,13 +15,17 @@ interface ClaimData {
   policy: string;
 }
 
+interface AIAnalysis {
+  etiqueta: string;
+  confianza: number;
+}
+
 const CLAIM_TYPES = [
-  { id: 'colision',  label: 'Colisión vehicular',  icon: Car,           desc: 'Choque con vehículo u objeto'      },
-  { id: 'robo',      label: 'Robo o hurto',          icon: AlertTriangle, desc: 'Robo total, parcial o autopartes' },
-  { id: 'granizo',   label: 'Daños por clima',       icon: Umbrella,      desc: 'Granizo, inundación, viento'       },
-  { id: 'incendio',  label: 'Incendio',               icon: Zap,           desc: 'Daños por fuego o explosión'       },
-  { id: 'inmueble',  label: 'Daños al inmueble',      icon: Home,          desc: 'Daños estructurales al hogar'      },
-  { id: 'otros',     label: 'Otros daños',           icon: Package,       desc: 'Cualquier otro siniestro'          },
+  { id: 'colision',  label: 'Colisión vehicular',  icon: Car,           desc: 'Choque con vehículo u objeto'  },
+  { id: 'robo',      label: 'Robo o hurto',         icon: AlertTriangle, desc: 'Robo total, parcial o autopartes' },
+  { id: 'incendio',  label: 'Incendio',              icon: Zap,           desc: 'Daños por fuego o explosión'  },
+  { id: 'inmueble',  label: 'Daños al inmueble',     icon: Home,          desc: 'Daños estructurales al hogar' },
+  { id: 'otros',     label: 'Otros daños',           icon: Package,       desc: 'Cualquier otro siniestro'     },
 ];
 
 const STEPS = ['Detalles', 'Fotografías', 'Análisis IA', 'Confirmación'];
@@ -37,7 +40,10 @@ const StepBar = ({ current }: { current: number }) => (
         <React.Fragment key={i}>
           <div className="flex flex-col items-center gap-1.5">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
-              ${done ? 'bg-emerald-400 text-white' : active ? 'bg-[#0B1E3D] text-white ring-4 ring-[#0B1E3D]/10' : 'bg-slate-100 text-slate-400'}`}>
+              ${done   ? 'bg-emerald-400 text-white'
+              : active ? 'bg-[#0B1E3D] text-white ring-4 ring-[#0B1E3D]/10'
+              :          'bg-slate-100 text-slate-400'}`}
+            >
               {done ? <CheckCircle2 size={14} /> : i + 1}
             </div>
             <span className={`text-[9px] font-semibold uppercase tracking-widest whitespace-nowrap
@@ -54,9 +60,19 @@ const StepBar = ({ current }: { current: number }) => (
   </div>
 );
 
-/* ── Step 1: Details ── */
-const StepDetails = ({ data, onChange, onNext }: { data: ClaimData, onChange: any, onNext: any }) => {
-  const valid = data.type && data.date && data.description.trim().length > 20;
+/* ── Field wrapper ── */
+const Field = ({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) => (
+  <div className="relative group">
+    <Icon className="absolute left-3.5 top-3.5 text-slate-300 group-focus-within:text-[#0B1E3D] transition-colors" size={15} />
+    {children}
+  </div>
+);
+
+const inputCls = "w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-[#0B1E3D] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all";
+
+/* ── Step 0: Details ── */
+const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: ClaimData) => void; onNext: () => void }) => {
+  const valid = data.type && data.date;
   return (
     <div className="space-y-7">
       <div>
@@ -65,13 +81,20 @@ const StepDetails = ({ data, onChange, onNext }: { data: ClaimData, onChange: an
         <p className="text-sm text-slate-400 mt-1">Cuéntanos qué sucedió para comenzar tu reclamación.</p>
       </div>
 
+      {/* Tipo */}
       <div>
-        <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-3 block">Tipo de reclamo</label>
+        <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-3 block">Tipo de siniestro</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {CLAIM_TYPES.map(({ id, label, icon: Icon, desc }) => (
-            <button key={id} type="button" onClick={() => onChange('type', id)}
+            <button
+              key={id}
+              type="button"
+              onClick={() => setData({ ...data, type: id })}
               className={`text-left p-4 rounded-2xl border transition-all duration-200
-                ${data.type === id ? 'bg-[#0B1E3D] border-[#0B1E3D]' : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white'}`}>
+                ${data.type === id
+                  ? 'bg-[#0B1E3D] border-[#0B1E3D]'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white'}`}
+            >
               <Icon size={17} className={`mb-2 ${data.type === id ? 'text-white/60' : 'text-slate-400'}`} />
               <p className={`text-xs font-bold leading-tight ${data.type === id ? 'text-white' : 'text-[#0B1E3D]'}`}>{label}</p>
               <p className={`text-[10px] mt-0.5 leading-tight ${data.type === id ? 'text-white/45' : 'text-slate-400'}`}>{desc}</p>
@@ -80,21 +103,49 @@ const StepDetails = ({ data, onChange, onNext }: { data: ClaimData, onChange: an
         </div>
       </div>
 
+      {/* Date + policy */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Fecha del incidente</label>
-          <input type="date" value={data.date} max={new Date().toISOString().split('T')[0]}
-            onChange={(e) => onChange('date', e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-[#0B1E3D] focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all" />
+          <Field icon={Calendar}>
+            <input
+              type="date"
+              value={data.date}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setData({ ...data, date: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Lugar del incidente</label>
-          <input type="text" placeholder="Ej. Av. Central 45, Col. Centro" value={data.location}
-            onChange={(e) => onChange('location', e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-[#0B1E3D] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all" />
+          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Número de póliza</label>
+          <Field icon={ShieldCheck}>
+            <input
+              type="text"
+              placeholder="Ej. VIP-9902"
+              value={data.policy}
+              onChange={(e) => setData({ ...data, policy: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
         </div>
       </div>
 
+      {/* Location */}
+      <div>
+        <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Lugar del incidente</label>
+        <Field icon={MapPin}>
+          <input
+            type="text"
+            placeholder="Ej. Av. Central 45, Col. Centro"
+            value={data.location}
+            onChange={(e) => setData({ ...data, location: e.target.value })}
+            className={inputCls}
+          />
+        </Field>
+      </div>
+
+      {/* Description */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Descripción del incidente</label>
@@ -102,214 +153,218 @@ const StepDetails = ({ data, onChange, onNext }: { data: ClaimData, onChange: an
             {data.description.length}/500
           </span>
         </div>
-        <textarea rows={4} placeholder="Describe con detalle lo que ocurrió: cómo sucedió, qué daños hay, si hubo terceros involucrados..."
-          value={data.description} onChange={(e) => onChange('description', e.target.value.slice(0, 500))}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-[#0B1E3D] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all resize-none" />
+        <Field icon={FileText}>
+          <textarea
+            rows={4}
+            placeholder="Describe con detalle lo que ocurrió: cómo sucedió, qué daños hay, si hubo terceros..."
+            value={data.description}
+            onChange={(e) => setData({ ...data, description: e.target.value.slice(0, 500) })}
+            className={`${inputCls} resize-none pt-3`}
+          />
+        </Field>
       </div>
 
-      <div>
-        <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Número de póliza</label>
-        <input type="text" placeholder="Ej. VIP-9902" value={data.policy}
-          onChange={(e) => onChange('policy', e.target.value)}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-[#0B1E3D] placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all" />
-      </div>
-
-      <button onClick={onNext} disabled={!valid}
-        className="w-full py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+      <button
+        onClick={onNext}
+        disabled={!valid}
+        className="w-full py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+      >
         Continuar <ArrowRight size={15} />
       </button>
     </div>
   );
 };
 
-/* ── Step 2: Photos ── */
-const StepPhotos = ({ files, onAdd, onRemove, onNext, onBack }: { files: File[], onAdd: any, onRemove: any, onNext: any, onBack: any }) => {
-  // ERROR CORREGIDO: useRef en TypeScript necesita inicializarse con null y definir el tipo de elemento HTML
-  const inputRef = useRef<HTMLInputElement>(null);
+/* ── Step 1: Photos ── */
+const StepPhotos = ({
+  files, setFiles, onNext, onBack,
+}: {
+  files: File[]; setFiles: (f: File[]) => void; onNext: () => void; onBack: () => void;
+}) => (
+  <div className="space-y-7">
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">Paso 2 de 4</p>
+      <h2 className="text-2xl font-bold text-[#0B1E3D] tracking-tight">Fotografías del siniestro</h2>
+      <p className="text-sm text-slate-400 mt-1">Sube evidencia fotográfica del daño para el análisis de IA.</p>
+    </div>
 
-  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // LÓGICA: Transformamos la FileList en un Array y filtramos solo imágenes
-    if (e.target.files) {
-      onAdd(Array.from(e.target.files).filter(f => f.type.startsWith('image/')));
-    }
-  };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    // LÓGICA: Accedemos a los archivos soltados mediante dataTransfer
-    onAdd(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')));
-  };
-
-  return (
-    <div className="space-y-7">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">Paso 2 de 4</p>
-        <h2 className="text-2xl font-bold text-[#0B1E3D] tracking-tight">Fotografías del siniestro</h2>
-        <p className="text-sm text-slate-400 mt-1">Sube al menos 1 foto clara del daño. Más evidencia = análisis más preciso.</p>
+    {/* Dropzone */}
+    <label className="relative block border-2 border-dashed border-slate-200 hover:border-[#0B1E3D]/30 bg-slate-50 hover:bg-slate-100/60 rounded-2xl p-12 text-center cursor-pointer transition-all group">
+      <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover:bg-[#0B1E3D]/10 flex items-center justify-center mx-auto mb-3 transition-colors">
+        <Upload size={20} className="text-slate-400 group-hover:text-[#0B1E3D] transition-colors" />
       </div>
+      <p className="text-sm font-semibold text-[#0B1E3D]">Haz clic o arrastra fotos aquí</p>
+      <p className="text-[11px] text-slate-400 mt-1">JPG, PNG, HEIC · Máx. 50 MB</p>
+      <input
+        type="file"
+        multiple
+        accept="image/*"
+        className="absolute inset-0 opacity-0 cursor-pointer"
+        onChange={(e) => { if (e.target.files) setFiles([e.target.files[0]]); }}
+      />
+    </label>
 
-      {/* ERROR CORREGIDO: inputRef.current puede ser null, agregamos el condicional ?.click() */}
-      <div onDragOver={(e) => e.preventDefault()} onDrop={handleDrop} onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-slate-200 hover:border-[#0B1E3D]/30 bg-slate-50 hover:bg-slate-100/60 rounded-2xl p-10 text-center cursor-pointer transition-all group">
-        <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover:bg-[#0B1E3D]/10 flex items-center justify-center mx-auto mb-3 transition-colors">
-          <Upload size={20} className="text-slate-400 group-hover:text-[#0B1E3D] transition-colors" />
-        </div>
-        <p className="text-sm font-semibold text-[#0B1E3D]">Arrastra fotos aquí o haz clic para seleccionar</p>
-        <p className="text-[11px] text-slate-400 mt-1">JPG, PNG, HEIC · Máx. 10 MB por imagen</p>
-        <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFiles} />
-      </div>
-
-      {files.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-          {files.map((file, i) => (
-            <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200">
-              <img src={URL.createObjectURL(file)} alt={`foto-${i}`} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
-              <button onClick={() => onRemove(i)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                <X size={12} className="text-slate-600" />
-              </button>
-            </div>
-          ))}
-          <div onClick={() => inputRef.current?.click()}
-            className="aspect-square rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 flex items-center justify-center cursor-pointer transition-colors bg-slate-50 hover:bg-slate-100">
-            <Upload size={16} className="text-slate-300" />
+    {/* Preview */}
+    {files.length > 0 && (
+      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-4 py-3 rounded-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden border border-emerald-200 shrink-0">
+            <img src={URL.createObjectURL(files[0])} alt="preview" className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-emerald-700 truncate max-w-48">{files[0].name}</p>
+            <p className="text-[10px] text-emerald-500 font-medium">Lista para análisis</p>
           </div>
         </div>
-      )}
-
-      <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
-        <ShieldCheck size={14} className="text-blue-400 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-blue-600 leading-relaxed">
-          <span className="font-bold">Consejo:</span> Incluye fotos del daño, placa del vehículo y la escena completa. Evita imágenes borrosas o editadas.
-        </p>
-      </div>
-
-      <div className="flex gap-3">
-        <button onClick={onBack}
-          className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-[#0B1E3D] font-semibold rounded-xl transition-all text-sm flex items-center gap-2">
-          <ArrowLeft size={15} /> Atrás
-        </button>
-        <button onClick={onNext} disabled={files.length < 1}
-          className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
-          Analizar con IA <ArrowRight size={15} />
+        <button onClick={() => setFiles([])} className="w-7 h-7 rounded-lg bg-emerald-100 hover:bg-emerald-200 flex items-center justify-center transition-colors">
+          <X size={13} className="text-emerald-600" />
         </button>
       </div>
+    )}
+
+    {/* Tip */}
+    <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+      <ShieldCheck size={14} className="text-blue-400 shrink-0 mt-0.5" />
+      <p className="text-[11px] text-blue-600 leading-relaxed">
+        <span className="font-bold">Consejo:</span> Incluye fotos del daño, placa del vehículo y la escena. Evita imágenes borrosas o editadas.
+      </p>
     </div>
-  );
-};
 
-/* ── Step 3: AI Review ── */
-const StepAI = ({ data, files, onNext, onBack }: { data: ClaimData, files: File[], onNext: any, onBack: any }) => {
-  const [phase, setPhase] = useState(0);
-  const score = React.useMemo(() => Math.floor(Math.random() * 30) + 10, []);
-  const claimLabel = CLAIM_TYPES.find(c => c.id === data.type)?.label || data.type;
+    <div className="flex gap-3">
+      <button onClick={onBack} className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-[#0B1E3D] font-semibold rounded-xl transition-all text-sm flex items-center gap-2">
+        <ArrowLeft size={15} /> Atrás
+      </button>
+      <button
+        onClick={onNext}
+        disabled={files.length === 0}
+        className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] text-sm"
+      >
+        Analizar con IA
+      </button>
+    </div>
+  </div>
+);
 
-  React.useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 1800);
-    const t2 = setTimeout(() => setPhase(2), 4200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+/* ── Step 2: AI ── */
+const StepAI = ({ files, onNext, onBack }: { files: File[]; onNext: () => void; onBack: () => void }) => {
+  const [phase, setPhase] = useState<number>(0);
+  const [result, setResult] = useState<AIAnalysis | null>(null);
+  const [error, setError]   = useState<string | null>(null);
 
-  const checks = [
-    { label: 'Análisis de imágenes',        icon: ScanSearch,  done: phase >= 1 },
-    { label: 'Verificación de metadatos',   icon: FileImage,    done: phase >= 1 },
-    { label: 'Detección de anomalías',      icon: Brain,        done: phase >= 2 },
-    { label: 'Validación de consistencia', icon: ShieldCheck,  done: phase >= 2 },
-  ];
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setPhase(1);
+        const base64 = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(files[0]);
+          reader.onload  = () => res((reader.result as string).split(',')[1]);
+          reader.onerror = rej;
+        });
+
+        const response = await fetch('http://localhost:5000/api/ia/analizar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+
+        const data = await response.json();
+        if (data.success) { setResult(data.analysis); setPhase(2); }
+        else throw new Error(data.msg || 'Error de IA');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Error desconocido');
+        setPhase(0);
+      }
+    };
+    if (phase === 0 && !result && !error) run();
+  }, [files, phase, result, error]);
+
+  const score    = (result?.confianza || 0) * 100;
+  const isFraude = result?.etiqueta === 'Falsas';
+
+  const scoreColor = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
+  const barColor   = score >= 80 ? 'bg-emerald-400'  : score >= 60 ? 'bg-amber-400'  : 'bg-red-500';
 
   return (
     <div className="space-y-7">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">Paso 3 de 4</p>
         <h2 className="text-2xl font-bold text-[#0B1E3D] tracking-tight">Análisis de IA</h2>
-        <p className="text-sm text-slate-400 mt-1">Nuestro modelo analiza tus fotos y valida la información del siniestro.</p>
+        <p className="text-sm text-slate-400 mt-1">Vertex AI Engine v3.0 analiza la evidencia fotográfica.</p>
       </div>
 
-      <div className="bg-[#0B1E3D] rounded-3xl p-8 relative overflow-hidden">
+      {/* AI status card */}
+      <div className={`rounded-3xl p-8 text-white relative overflow-hidden transition-all duration-500
+        ${phase === 1 ? 'bg-[#0B1E3D]' : isFraude ? 'bg-red-600' : 'bg-emerald-500'}`}>
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full border border-white/5" />
         <div className="absolute -right-2 -top-2 w-24 h-24 rounded-full border border-white/5" />
-
-        <div className="relative z-10 flex items-center gap-4 mb-6">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 ${phase === 2 ? 'bg-emerald-400' : 'bg-white/10'}`}>
-            {phase === 2
-              ? <CheckCircle2 size={22} className="text-white" />
-              : <Brain size={22} className="text-white/70 animate-pulse" />}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">
-              {phase === 0 ? 'Escaneando fotografías...' : phase === 1 ? 'Analizando consistencia...' : 'Análisis completado'}
-            </p>
-            <p className="text-[11px] text-white/40 mt-0.5">
-              {phase === 0 ? 'Detectando metadatos y daños visibles' : phase === 1 ? 'Verificando GPS, fechas y patrones' : 'Sin anomalías detectadas'}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative z-10 space-y-3">
-          {checks.map((item, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ${item.done ? 'bg-emerald-400' : 'bg-white/5 border border-white/10'}`}>
-                {item.done ? <CheckCircle2 size={12} className="text-white" /> : <item.icon size={12} className="text-white/20" />}
-              </div>
-              <span className={`text-xs font-medium transition-colors ${item.done ? 'text-white/70' : 'text-white/25'}`}>{item.label}</span>
-              {!item.done && <Clock size={11} className="ml-auto text-white/15 animate-spin" style={{ animationDuration: '3s' }} />}
-            </div>
-          ))}
+        <div className="relative z-10 flex flex-col items-center gap-3 text-center">
+          {phase === 1
+            ? <Brain size={44} className="animate-pulse text-white/70" />
+            : isFraude
+              ? <ShieldAlert size={44} />
+              : <CheckCircle2 size={44} />}
+          <p className="text-lg font-bold">
+            {phase === 1 ? 'Analizando evidencia...' : isFraude ? 'Inconsistencia detectada' : 'Evidencia validada'}
+          </p>
+          <p className="text-[11px] text-white/40 font-medium">
+            {phase === 1 ? 'Detectando patrones y metadatos' : isFraude ? 'Se detectaron anomalías en la imagen' : 'Sin anomalías detectadas'}
+          </p>
         </div>
       </div>
 
-      {phase === 2 && (
+      {/* Result */}
+      {phase === 2 && result && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Score de Riesgo</span>
-              <span className="text-2xl font-bold text-emerald-500">{score}%</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Resultado del Análisis</span>
+              <span className={`text-2xl font-bold ${scoreColor}`}>{score.toFixed(1)}%</span>
             </div>
-            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
-              <div className="h-full bg-emerald-400 rounded-full transition-all duration-1000" style={{ width: `${score}%` }} />
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-4">
+              <div className={`h-full rounded-full transition-all duration-1000 ${barColor}`} style={{ width: `${score}%` }} />
             </div>
-            <div className="flex items-center gap-2 text-emerald-600">
-              <Sparkles size={13} />
-              <p className="text-[11px] font-semibold">Riesgo bajo · validación automática aprobada</p>
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <span className="text-xs text-slate-400 font-medium">Veredicto</span>
+              <span className={`text-sm font-bold ${isFraude ? 'text-red-600' : 'text-emerald-600'}`}>
+                {isFraude ? 'Posible fraude' : 'Siniestro real'}
+              </span>
             </div>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Resumen del análisis</p>
-            {[
-              { label: 'Tipo de siniestro',         value: claimLabel },
-              { label: 'Fotografías procesadas',    value: `${files.length} imagen${files.length !== 1 ? 'es' : ''}` },
-              { label: 'Anomalías detectadas',      value: 'Ninguna' },
-              { label: 'Estimado de cobertura',     value: '$45,000 – $60,000 MXN' },
-            ].map((row, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{row.label}</span>
-                <span className="text-xs font-semibold text-[#0B1E3D]">{row.value}</span>
-              </div>
-            ))}
           </div>
         </div>
       )}
 
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
+          <AlertTriangle size={15} className="text-red-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-red-600 font-semibold leading-relaxed">{error}</p>
+        </div>
+      )}
+
       <div className="flex gap-3">
-        <button onClick={onBack} className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-[#0B1E3D] font-semibold rounded-xl transition-all text-sm flex items-center gap-2">
+        <button
+          onClick={onBack}
+          disabled={phase === 1}
+          className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-[#0B1E3D] font-semibold rounded-xl transition-all text-sm flex items-center gap-2"
+        >
           <ArrowLeft size={15} /> Atrás
         </button>
-        <button onClick={onNext} disabled={phase < 2}
-          className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
-          Confirmar y enviar <ArrowRight size={15} />
+        <button
+          onClick={onNext}
+          disabled={phase !== 2}
+          className="flex-1 py-3.5 bg-[#0B1E3D] hover:bg-[#071328] disabled:bg-slate-200 disabled:text-slate-400 text-white font-semibold rounded-xl transition-all active:scale-[0.98] text-sm"
+        >
+          Confirmar y enviar
         </button>
       </div>
     </div>
   );
 };
 
-/* ── Step 4: Confirmation ── */
-const StepConfirm = ({ data, files, navigate }: { data: ClaimData, files: File[], navigate: any }) => {
-  const claimId = React.useMemo(() => `CLM-2026-${String(Math.floor(Math.random() * 900) + 100)}`, []);
-  const claimLabel = CLAIM_TYPES.find(c => c.id === data.type)?.label || data.type;
-
+/* ── Step 3: Confirm ── */
+const StepConfirm = ({ navigate }: { navigate: (p: string) => void }) => {
+  const [folio] = useState(() => `SHIELD-2026-${Math.floor(Math.random() * 8999) + 1000}`);
   return (
     <div className="space-y-7 text-center">
       <div className="flex flex-col items-center gap-4 py-4">
@@ -317,22 +372,21 @@ const StepConfirm = ({ data, files, navigate }: { data: ClaimData, files: File[]
           <CheckCircle2 size={40} className="text-emerald-400" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-[#0B1E3D] tracking-tight">¡Reclamación enviada!</h2>
+          <h2 className="text-2xl font-bold text-[#0B1E3D] tracking-tight">¡Reporte enviado!</h2>
           <p className="text-sm text-slate-400 mt-1">Tu caso fue registrado y está en revisión.</p>
         </div>
       </div>
 
-      <div className="bg-[#0B1E3D] rounded-3xl p-7 text-left space-y-4">
+      <div className="bg-[#0B1E3D] rounded-3xl p-7 text-left space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">ID de reclamación</span>
-          <span className="text-sm font-bold text-white font-mono">{claimId}</span>
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Folio de seguimiento</span>
+          <span className="text-sm font-bold text-white font-mono">{folio}</span>
         </div>
         <div className="h-px bg-white/10" />
         {[
-          { label: 'Tipo',         value: claimLabel },
-          { label: 'Fecha',        value: data.date  || '—' },
-          { label: 'Fotografías', value: `${files.length} adjunta${files.length !== 1 ? 's' : ''}` },
-          { label: 'Estado',       value: 'En revisión' },
+          { label: 'Estado',    value: 'En revisión' },
+          { label: 'Prioridad', value: 'Normal'      },
+          { label: 'Plazo',     value: '1–3 días hábiles' },
         ].map((row, i) => (
           <div key={i} className="flex items-center justify-between">
             <span className="text-xs text-white/40">{row.label}</span>
@@ -355,8 +409,10 @@ const StepConfirm = ({ data, files, navigate }: { data: ClaimData, files: File[]
         ))}
       </div>
 
-      <button onClick={() => navigate('/portal')}
-        className="w-full py-3.5 bg-[#0B1E3D] hover:bg-[#071328] text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
+      <button
+        onClick={() => navigate('/portal')}
+        className="w-full py-3.5 bg-[#0B1E3D] hover:bg-[#071328] text-white font-semibold rounded-xl transition-all active:scale-[0.98] text-sm"
+      >
         Volver al Portal
       </button>
     </div>
@@ -366,23 +422,14 @@ const StepConfirm = ({ data, files, navigate }: { data: ClaimData, files: File[]
 /* ── Main wizard ── */
 const NewClaim = () => {
   const navigate = useNavigate();
-  const [step, setStep]   = useState(0);
-  const [data, setData]   = useState<ClaimData>({ type: '', date: '', location: '', description: '', policy: '' });
+  const [step, setStep]   = useState<number>(0);
   const [files, setFiles] = useState<File[]>([]);
-
-  const updateData = (key: string, val: string) => setData(prev => ({ ...prev, [key]: val }));
-
-  const addFiles = (newFiles: File[]) => {
-    setFiles(prev => {
-      // LÓGICA: Evitamos subir archivos duplicados basados en nombre y peso
-      const existing = new Set(prev.map(f => f.name + f.size));
-      return [...prev, ...newFiles.filter(f => !existing.has(f.name + f.size))].slice(0, 10);
-    });
-  };
+  const [data, setData]   = useState<ClaimData>({ type: '', date: '', location: '', description: '', policy: '' });
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans p-6 lg:p-10">
       <div className="max-w-2xl mx-auto">
+
         <button
           onClick={() => step === 0 ? navigate('/portal') : setStep(s => s - 1)}
           className="flex items-center gap-2 text-slate-400 hover:text-[#0B1E3D] transition-colors text-sm font-medium mb-8 group"
@@ -393,11 +440,12 @@ const NewClaim = () => {
 
         <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10">
           <StepBar current={step} />
-          {step === 0 && <StepDetails data={data} onChange={updateData} onNext={() => setStep(1)} />}
-          {step === 1 && <StepPhotos  files={files} onAdd={addFiles} onRemove={(i: number) => setFiles(f => f.filter((_, idx) => idx !== i))} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-          {step === 2 && <StepAI      data={data} files={files} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <StepConfirm data={data} files={files} navigate={navigate} />}
+          {step === 0 && <StepDetails data={data} setData={setData} onNext={() => setStep(1)} />}
+          {step === 1 && <StepPhotos  files={files} setFiles={setFiles} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
+          {step === 2 && <StepAI      files={files} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+          {step === 3 && <StepConfirm navigate={navigate} />}
         </div>
+
       </div>
     </div>
   );

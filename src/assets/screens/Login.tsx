@@ -104,7 +104,7 @@ const handleLogin = async (e: React.FormEvent) => {
       </div>
 
       {/* TARJETA PRINCIPAL (Mantener igual) */}
-      <div className="relative z-10 w-full max-w-5xl flex flex-col md:flex-row bg-white/10 backdrop-blur-[25px] border border-white/20 rounded-[35px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden min-h-[550px]">
+      <div className="relative z-10 w-full max-w-5xl flex flex-col md:flex-row bg-white/10 backdrop-blur-[25px] border border-white/20 rounded-[35px] shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden min-h-137.5">
 
         {/* LADO IZQUIERDO: LOGIN */}
         <div className="w-full md:w-[55%] p-8 sm:p-12 bg-white/5 flex flex-col justify-center">
