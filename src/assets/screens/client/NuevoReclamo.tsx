@@ -21,11 +21,11 @@ interface AIAnalysis {
 }
 
 const CLAIM_TYPES = [
-  { id: 'colision',  label: 'Colisión vehicular',  icon: Car,           desc: 'Choque con vehículo u objeto'  },
-  { id: 'robo',      label: 'Robo o hurto',         icon: AlertTriangle, desc: 'Robo total, parcial o autopartes' },
-  { id: 'incendio',  label: 'Incendio',              icon: Zap,           desc: 'Daños por fuego o explosión'  },
-  { id: 'inmueble',  label: 'Daños al inmueble',     icon: Home,          desc: 'Daños estructurales al hogar' },
-  { id: 'otros',     label: 'Otros daños',           icon: Package,       desc: 'Cualquier otro siniestro'     },
+  { id: 'Colision',  label: 'Colisión vehicular',  icon: Car,           desc: 'Choque con vehículo u objeto'  },
+  { id: 'Robo',      label: 'Robo o hurto',         icon: AlertTriangle, desc: 'Robo total, parcial o autopartes' },
+  { id: 'Incendio',  label: 'Incendio',              icon: Zap,           desc: 'Daños por fuego o explosión'  },
+  { id: 'Inmueble',  label: 'Daños al inmueble',     icon: Home,          desc: 'Daños estructurales al hogar' },
+  { id: 'Otros',     label: 'Otros daños',           icon: Package,       desc: 'Cualquier otro siniestro'     },
 ];
 
 const STEPS = ['Detalles', 'Fotografías', 'Análisis IA', 'Confirmación'];
@@ -301,36 +301,38 @@ const StepAI = ({
 
   // 2. Función para guardar la reclamación final en SQL Server
   const handleFinalizar = async () => {
-    if (!result) return;
-    setIsSaving(true);
+  if (!result) return;
+  setIsSaving(true);
+  try {
+    const response = await fetch('http://localhost:5000/api/incidentes/crear', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'x-auth-token': localStorage.getItem('token') || '' 
+      },
+      body: JSON.stringify({
+        monto_reclamado: parseFloat(data.policy),
+        score_confianza_ia: result.confianza,
+        veredicto_ia: result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO',
+        
+        // --- AQUÍ ESTÁN LOS NUEVOS CAMPOS ---
+        tipo_siniestro: data.type,               // Envía 'Colision', 'Robo', etc.
+        descripcion_siniestro: data.description, // Envía el texto del textarea
+        referencia_poliza: data.location         // Se queda por si es Ajustador
+      }),
+    });
 
-    try {
-      const response = await fetch('http://localhost:5000/api/incidentes/crear', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'x-auth-token': localStorage.getItem('token') || '' 
-        },
-        body: JSON.stringify({
-          referencia_poliza: data.location, // O el campo que uses para identificar el ID de referencia
-          monto_reclamado: parseFloat(data.policy), // Mapeo a monto_reclamado (DECIMAL)
-          score_confianza_ia: result.confianza, // El score de 0 a 1
-          veredicto_ia: result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO'
-        }),
-      });
-
-      const saveRes = await response.json();
-      if (saveRes.success) {
-        onNext(); // Avanzar al StepConfirm (Paso 4)
-      } else {
-        throw new Error(saveRes.msg || 'No se pudo guardar la reclamación');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al conectar con la base de datos');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    const saveRes = await response.json();
+    if (saveRes.success) onNext();
+    else throw new Error(saveRes.msg);
+  } catch (err: unknown) {
+  if (err instanceof Error) {
+    setError(err.message);
+  } else {
+    setError("Ocurrió un error inesperado al guardar.");
+  }
+}
+};
 
   const score = (result?.confianza || 0) * 100;
   const isFraude = result?.etiqueta === 'Falsas';
