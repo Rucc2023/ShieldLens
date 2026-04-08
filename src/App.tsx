@@ -7,21 +7,26 @@ import ForensicAnalysis from './assets/screens/Analist/Forense';
 import DetalleCasoForense from './assets/screens/Analist/DetallesCaso';
 import AdminPanel from './assets/screens/Admin/PanelAdmin';
 
-
-
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Rutas Públicas */}
         <Route path="/" element={<LoginScreen />} />
+
+        {/* Rutas del Cliente */}
         <Route path="/portal" element={<ClientPortal />} />
         <Route path="/portal/nuevo-reclamo" element={<NewClaim />} />
-        <Route path="/portal/estatus-reclamos" element={<ClaimStatus />} />
+        {/* Añadimos :id para que sea una ruta dinámica */}
+        <Route path="/portal/estatus-reclamos/:id" element={<ClaimStatus />} />
+
+        {/* Rutas del Analista */}
         <Route path="/analyst" element={<ForensicAnalysis />} />
-        <Route path="/analyst/case-details" element={<DetalleCasoForense />} />
+        {/* También aquí sugiero usar :id más adelante para los detalles del caso */}
+        <Route path="/analyst/case-details/:id" element={<DetalleCasoForense />} />
+
+        {/* Rutas de Administración */}
         <Route path="/admin" element={<AdminPanel />} />
-
-
       </Routes>
     </BrowserRouter>
   );

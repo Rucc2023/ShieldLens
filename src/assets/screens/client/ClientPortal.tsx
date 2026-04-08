@@ -202,11 +202,11 @@ const ClientPortal = () => {
                   claims.map((claim) => {
                     const style = getStatusStyle(claim.estado_reclamacion);
                     return (
-                      <div
-                        key={claim.id_reclamacion}
-                        onClick={() => navigate('/portal/estatus-reclamos')}
-                        className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-white transition-all cursor-pointer group"
-                      >
+                        <div
+                          key={claim.id_reclamacion}
+                          onClick={() => navigate(`/portal/estatus-reclamos/${claim.id_reclamacion}`)} // Enviamos el ID real
+                          className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50 hover:bg-white transition-all cursor-pointer group"
+                        >
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
                             <FileText size={16} className="text-[#0B1E3D]/60" />
