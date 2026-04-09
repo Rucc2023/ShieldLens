@@ -22,6 +22,7 @@ const ClaimStatus = () => {
   const [claim, setClaim] = useState<FullClaim | null>(null);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     const fetchDetail = async () => {
       try {

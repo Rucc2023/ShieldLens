@@ -50,7 +50,7 @@ const RecentActivity = ({ logs }: { logs: LogForense[] }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm">
       <h2 className="text-sm font-bold text-[#0B1E3D] mb-6">Auditoría Forense Reciente</h2>
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+      <div className="space-y-4 max-h-100 overflow-y-auto pr-2">
         {logs.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-4">No hay logs registrados.</p>
         ) : (
