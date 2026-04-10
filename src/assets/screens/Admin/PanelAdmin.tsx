@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../../../context/useUser';
 import { 
   Shield, Users, LogOut, Plus, MoreVertical,
   BarChart2, X, ChevronDown
 } from 'lucide-react';
-
-/* ─── Interfaces ────────────────────────────────────────────────── */
 
 interface Ajustador {
   id_ajustador: number;
@@ -91,6 +90,7 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
 
   const [logs, setLogs] = useState<LogForense[]>([]);
+  const { userName, userRole } = useUser();
 
   const [formData, setFormData] = useState({ 
     nombre: '', 
@@ -231,14 +231,23 @@ const AdminPanel = () => {
         </div>
 
         {/* PERFIL DE USUARIO RESTAURADO */}
-        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-          <div className="w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-xs shrink-0">AM</div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Ana Martínez</p>
-            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Admin Root</p>
+        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 hover:bg-white/10 transition-all cursor-default">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-lg">
+          {/* Genera iniciales (ej: "AD" para Alan Díaz) */}
+          {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '??'}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-white truncate">
+            {userName || "Usuario"}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">
+              {userRole || "Sin Rol"}
+            </p>
           </div>
         </div>
-
+      </div>
         <nav className="flex flex-col gap-2">
           <button onClick={() => setActiveTab('resumen')} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${activeTab === 'resumen' ? 'bg-white text-[#0B1E3D]' : 'text-white/40 hover:bg-white/5'}`}>
             <BarChart2 size={14} /> Resumen

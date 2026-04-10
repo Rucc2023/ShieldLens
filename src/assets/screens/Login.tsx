@@ -38,7 +38,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
         // IMPORTANTE: Aquí enviamos el UUID (ej. CAE7DB64...) al Contexto Global
         // Esto permite que 'usuario_ejecuta' se llene correctamente en tus logs
-        loginUser(user.id, user.rol); 
+        loginUser(user.id, user.rol, user.nombre, user.email); // Pasamos también el nombre y email para tenerlos disponibles globalmente
 
         // Guardado local opcional para persistencia tras recargar
         localStorage.setItem('token', token);

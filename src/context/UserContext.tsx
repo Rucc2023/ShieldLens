@@ -3,7 +3,9 @@ import { createContext } from 'react';
 export interface UserContextType {
   userId: string | null;
   userRole: string | null;
-  loginUser: (id: string, role: string) => void;
+  userName: string | null;   // <--- Agregado
+  userEmail: string | null;
+  loginUser: (id: string, role: string, name: string, email: string) => void;
   logout: () => void;
 }
 
