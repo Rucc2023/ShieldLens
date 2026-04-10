@@ -299,39 +299,45 @@ const StepAI = ({
     if (phase === 0 && !result && !error) runAnalysis();
   }, [files, phase, result, error]);
 
-  // 2. Función para guardar la reclamación final en SQL Server
-  const handleFinalizar = async () => {
-  if (!result) return;
-  setIsSaving(true);
-  try {
-    const response = await fetch('http://localhost:5000/api/incidentes/crear', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'x-auth-token': localStorage.getItem('token') || '' 
-      },
-      body: JSON.stringify({
-        monto_reclamado: parseFloat(data.policy),
-        score_confianza_ia: result.confianza,
-        veredicto_ia: result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO',
-        
-        // --- AQUÍ ESTÁN LOS NUEVOS CAMPOS ---
-        tipo_siniestro: data.type,               // Envía 'Colision', 'Robo', etc.
-        descripcion_siniestro: data.description, // Envía el texto del textarea
-        referencia_poliza: data.location         // Se queda por si es Ajustador
-      }),
-    });
+const handleFinalizar = async () => {
+    if (!result || files.length === 0) return;
+    setIsSaving(true);
+    setError(null);
 
-    const saveRes = await response.json();
-    if (saveRes.success) onNext();
-    else throw new Error(saveRes.msg);
-  } catch (err: unknown) {
-  if (err instanceof Error) {
-    setError(err.message);
-  } else {
-    setError("Ocurrió un error inesperado al guardar.");
-  }
-}
+    try {
+        const formData = new FormData();
+        // El nombre 'imagen' debe coincidir con upload.single('imagen') en las rutas
+        formData.append('imagen', files[0]); 
+        
+        // Datos del siniestro
+        formData.append('monto_reclamado', data.policy); // data.policy es tu input de monto
+        formData.append('score_confianza_ia', result.confianza.toString());
+        formData.append('veredicto_ia', result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO');
+        formData.append('tipo_siniestro', data.type);
+        formData.append('descripcion_siniestro', data.description);
+        formData.append('ubicacion', data.location);
+
+        const response = await fetch('http://localhost:5000/api/incidentes/crear', {
+            method: 'POST',
+            headers: { 
+                // NO incluir Content-Type aquí, el navegador lo genera con el boundary para FormData
+                'x-auth-token': localStorage.getItem('token') || '' 
+            },
+            body: formData,
+        });
+
+        const saveRes = await response.json();
+
+        if (response.ok && saveRes.success) {
+            onNext(); // Pasa al paso de "Confirmación"
+        } else {
+            throw new Error(saveRes.msg || 'Error al registrar el siniestro');
+        }
+    } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Error de conexión");
+    } finally {
+        setIsSaving(false);
+    }
 };
 
   const score = (result?.confianza || 0) * 100;
