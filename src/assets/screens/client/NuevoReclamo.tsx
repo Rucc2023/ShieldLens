@@ -306,21 +306,18 @@ const handleFinalizar = async () => {
 
     try {
         const formData = new FormData();
-        // El nombre 'imagen' debe coincidir con upload.single('imagen') en las rutas
         formData.append('imagen', files[0]); 
         
-        // Datos del siniestro
-        formData.append('monto_reclamado', data.policy); // data.policy es tu input de monto
+        formData.append('monto_reclamado', data.policy); 
         formData.append('score_confianza_ia', result.confianza.toString());
         formData.append('veredicto_ia', result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO');
         formData.append('tipo_siniestro', data.type);
         formData.append('descripcion_siniestro', data.description);
-        formData.append('ubicacion', data.location);
+        formData.append('lugar_incidente', data.location); // <--- CAMBIAMOS 'ubicacion' POR 'lugar_incidente'
 
         const response = await fetch('http://localhost:5000/api/incidentes/crear', {
             method: 'POST',
             headers: { 
-                // NO incluir Content-Type aquí, el navegador lo genera con el boundary para FormData
                 'x-auth-token': localStorage.getItem('token') || '' 
             },
             body: formData,
@@ -329,7 +326,7 @@ const handleFinalizar = async () => {
         const saveRes = await response.json();
 
         if (response.ok && saveRes.success) {
-            onNext(); // Pasa al paso de "Confirmación"
+            onNext(); 
         } else {
             throw new Error(saveRes.msg || 'Error al registrar el siniestro');
         }
