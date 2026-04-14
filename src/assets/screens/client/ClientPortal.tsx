@@ -20,7 +20,7 @@ interface Claim {
 const getStatusStyle = (status: string) => {
   switch (status.toUpperCase()) {
     case 'PENDIENTE':  return { bg: 'bg-amber-50',  text: 'text-amber-600',   dot: 'bg-amber-400'   };
-    case 'FINALIZADO': return { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400' };
+    case 'REVISADO': return { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400' };
     default:           return { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400'    };
   }
 };

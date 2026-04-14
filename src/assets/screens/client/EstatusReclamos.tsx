@@ -54,7 +54,7 @@ const ClaimStatus = () => {
     { label: 'Recibido', completed: true },
     { label: 'Análisis IA', completed: true },
     { label: 'En Revisión', completed: claim.estado_reclamacion !== 'Rechazado' },
-    { label: 'Resolución', completed: claim.estado_reclamacion === 'Finalizado' },
+    { label: 'Resolución', completed: claim.estado_reclamacion === 'Aceptado' },
   ];
 
   const iaScorePct = (claim.score_confianza_ia * 100).toFixed(0);
