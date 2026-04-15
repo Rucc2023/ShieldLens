@@ -232,7 +232,7 @@ const AdminPanel = () => {
 
         {/* PERFIL DE USUARIO RESTAURADO */}
         <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 hover:bg-white/10 transition-all cursor-default">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-lg">
+        <div className="w-10 h-10 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-lg">
           {/* Genera iniciales (ej: "AD" para Alan Díaz) */}
           {userName ? userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : '??'}
         </div>
@@ -283,7 +283,7 @@ const AdminPanel = () => {
                 <button onClick={() => setViewMode('clientes')} className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${viewMode === 'clientes' ? 'bg-white shadow-sm text-[#0B1E3D]' : 'text-slate-400'}`}>Clientes</button>
               </div>
               <button onClick={() => setShowModal(true)} className="bg-[#0B1E3D] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/10">
-                <Plus size={14} /> Nuevo
+                <Plus size={14} /> Crear Usuario
               </button>
             </div>
 
