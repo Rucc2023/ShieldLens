@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, CheckCircle2, Clock, ShieldCheck, 
-  CircleDollarSign, Info, Loader2, AlertCircle 
+  CircleDollarSign, Info, Loader2, AlertCircle,
 } from 'lucide-react';
 
 interface FullClaim {
@@ -16,164 +16,237 @@ interface FullClaim {
   descripcion_siniestro: string;
 }
 
+const buildSteps = (estado: string) => {
+  const s        = estado?.toUpperCase();
+  const resolved = ['REVISADO', 'APROBADO', 'ACEPTADO', 'RECHAZADO', 'FRAUDE'].includes(s);
+  return [
+    { label: 'Recibido',    done: true,     active: false },
+    { label: 'Análisis IA', done: true,     active: false },
+    { label: 'En Revisión', done: resolved, active: !resolved },
+    { label: 'Resolución',  done: resolved, active: resolved  },
+  ];
+};
+
 const ClaimStatus = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // Obtenemos el ID de la URL
-  const [claim, setClaim] = useState<FullClaim | null>(null);
+  const { id }   = useParams();
+  const [claim,   setClaim]   = useState<FullClaim | null>(null);
   const [loading, setLoading] = useState(true);
-
 
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         const res = await fetch(`http://localhost:5000/api/incidentes/detalle/${id}`, {
-          headers: { 'x-auth-token': localStorage.getItem('token') || '' }
+          headers: { 'x-auth-token': localStorage.getItem('token') || '' },
         });
         const json = await res.json();
         if (json.success) setClaim(json.data);
-      } catch (err) {
-        console.error("Error al cargar detalle");
-      } finally {
-        setLoading(false);
-      }
+      } catch { /* null state handles it */ }
+      finally { setLoading(false); }
     };
     fetchDetail();
   }, [id]);
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 gap-4">
-      <Loader2 className="animate-spin text-blue-600" size={40} />
-      <p className="text-sm font-bold text-[#0B1E3D]">Cargando expediente forense...</p>
+      <Loader2 size={26} className="animate-spin text-blue-400" />
+      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Cargando expediente...</p>
     </div>
   );
 
-  if (!claim) return <div className="p-10 text-center">No se encontró el reporte.</div>;
+  if (!claim) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <p className="text-sm text-slate-400 font-medium">No se encontró el reporte.</p>
+    </div>
+  );
 
-  // Lógica de pasos basada en el estado de la BD
-  const steps = [
-    { label: 'Recibido', completed: true },
-    { label: 'Análisis IA', completed: true },
-    { label: 'En Revisión', completed: claim.estado_reclamacion !== 'Rechazado' },
-    { label: 'Resolución', completed: claim.estado_reclamacion === 'Aceptado' },
-  ];
+  const steps         = buildSteps(claim.estado_reclamacion);
+  const iaScorePct    = Math.round((claim.score_confianza_ia ?? 0) * 100);
+  const isFraude      = claim.veredicto_ia === 'SOSPECHOSO';
+  const completedCount = steps.filter(s => s.done).length;
 
-  const iaScorePct = (claim.score_confianza_ia * 100).toFixed(0);
+  const statusStyle = (() => {
+    const s = claim.estado_reclamacion?.toUpperCase();
+    if (s === 'PENDIENTE')                                    return { bg: 'bg-amber-50',   text: 'text-amber-600',   dot: 'bg-amber-400',   pulse: true  };
+    if (['ACEPTADO', 'APROBADO', 'REVISADO'].includes(s))    return { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400', pulse: false };
+    if (['RECHAZADO', 'FRAUDE'].includes(s))                  return { bg: 'bg-red-50',     text: 'text-red-600',     dot: 'bg-red-400',     pulse: false };
+    return                                                           { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400',    pulse: false };
+  })();
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D] p-6 lg:p-12">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D]">
+      <div className="max-w-4xl mx-auto px-6 lg:px-8 py-8 space-y-6">
 
         {/* BACK */}
-        <button onClick={() => navigate('/portal')} className="flex items-center gap-2 text-slate-400 hover:text-[#0B1E3D] transition-all text-sm font-bold group">
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+        <button
+          onClick={() => navigate('/portal')}
+          className="flex items-center gap-2 text-slate-400 hover:text-[#0B1E3D] transition-colors text-sm font-medium group"
+        >
+          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
           Volver al Portal
         </button>
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-               <span className="px-3 py-1 bg-[#0B1E3D] text-white text-[9px] font-black uppercase tracking-widest rounded-lg">
-                 Expediente Digital
-               </span>
-               <p className="text-[11px] font-bold text-slate-400 uppercase">
-                 {claim.tipo_siniestro} · {new Date(claim.fecha_reclamacion).toLocaleDateString()}
-               </p>
+              <span className="px-2.5 py-1 bg-[#0B1E3D] text-white text-[9px] font-semibold uppercase tracking-widest rounded-lg">
+                Expediente Digital
+              </span>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                {claim.tipo_siniestro} · {new Date(claim.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </p>
             </div>
-            <h1 className="text-4xl font-black tracking-tighter">{claim.id_reclamacion.substring(0, 13)}</h1>
+            <h1 className="text-2xl font-bold tracking-tight font-mono">{claim.id_reclamacion.substring(0, 13)}</h1>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2
-              ${claim.estado_reclamacion === 'Pendiente' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-              <span className={`w-2 h-2 rounded-full animate-pulse ${claim.estado_reclamacion === 'Pendiente' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
-              {claim.estado_reclamacion}
-            </span>
-          </div>
+
+          <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${statusStyle.bg} ${statusStyle.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${statusStyle.pulse ? 'animate-pulse' : ''}`} />
+            {claim.estado_reclamacion}
+          </span>
         </div>
 
-        {/* PROGRESS TRACKER */}
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <ShieldCheck size={120} />
+        {/* ── TIMELINE ── */}
+        <div className="bg-white border border-slate-200 rounded-3xl px-8 pt-7 pb-8">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-sm font-bold text-[#0B1E3D]">Progreso de la Reclamación</h3>
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+              {completedCount} de {steps.length} pasos
+            </span>
           </div>
-          
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-10">Línea de Tiempo del Proceso</h3>
-          
-          <div className="flex flex-col md:flex-row justify-between relative gap-8">
+
+          {/* Row: [node]──[connector]──[node]──[connector]──[node] */}
+          <div className="flex items-start">
             {steps.map((step, i) => (
-              <div key={i} className="flex flex-col items-center z-10 w-full">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all shadow-lg
-                  ${step.completed ? 'bg-[#0B1E3D] text-white' : 'bg-slate-100 text-slate-300'}`}>
-                  {step.completed ? <CheckCircle2 size={20} /> : <Clock size={20} />}
+              <div key={i} className={`flex items-start ${i < steps.length - 1 ? 'flex-1' : ''}`}>
+
+                {/* Node + label */}
+                <div className="flex flex-col items-center">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 shrink-0
+                    ${step.done && step.active
+                      ? 'bg-[#0B1E3D] text-white ring-4 ring-[#0B1E3D]/10'
+                      : step.done
+                        ? 'bg-emerald-400 text-white'
+                        : 'bg-slate-100 text-slate-300 border border-slate-200'}`}
+                  >
+                    {step.done ? <CheckCircle2 size={16} /> : <Clock size={15} />}
+                  </div>
+
+                  <p className={`text-[11px] font-semibold mt-2.5 whitespace-nowrap text-center
+                    ${step.done ? 'text-[#0B1E3D]' : 'text-slate-300'}`}>
+                    {step.label}
+                  </p>
+
+                  {/* Sub-label */}
+                  {step.active && step.done && (
+                    <span className="text-[9px] font-semibold text-blue-500 uppercase tracking-widest mt-0.5">Actual</span>
+                  )}
+                  {step.active && !step.done && (
+                    <span className="text-[9px] font-semibold text-amber-500 uppercase tracking-widest mt-0.5">En curso</span>
+                  )}
+                  {step.done && step.label === 'Resolución' && !step.active && (
+                    <span className="text-[9px] font-semibold text-emerald-500 uppercase tracking-widest mt-0.5">Finalizado</span>
+                  )}
                 </div>
-                <p className={`text-xs font-bold ${step.completed ? 'text-[#0B1E3D]' : 'text-slate-300'}`}>{step.label}</p>
+
+                {/* Connector */}
+                {i < steps.length - 1 && (
+                  <div className="flex-1 px-2 mt-4.5">
+                    <div className="h-0.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                        style={{
+                          width: step.done && steps[i + 1].done ? '100%'
+                               : step.done                       ? '50%'
+                               :                                   '0%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
-            {/* Connector line (Desktop) */}
-            <div className="absolute top-6 left-0 w-full h-0.5 bg-slate-100 z-0 hidden md:block" />
           </div>
         </div>
 
         {/* INFO GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
+
           {/* IA INSIGHTS */}
-          <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 space-y-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-7 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-50 rounded-2xl text-blue-600"><ShieldCheck size={20}/></div>
-              <h3 className="font-bold text-sm">Veredicto IA ShieldLens</h3>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                <span>Nivel de Confianza</span>
-                <span>{iaScorePct}%</span>
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+                <ShieldCheck size={17} className="text-blue-500" />
               </div>
-              <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${iaScorePct}%` }} />
+              <h3 className="text-sm font-bold">Veredicto IA ShieldLens</h3>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Nivel de confianza</span>
+                <span className="text-lg font-bold text-[#0B1E3D]">{iaScorePct}%</span>
+              </div>
+              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${isFraude ? 'bg-red-400' : 'bg-emerald-400'}`}
+                  style={{ width: `${iaScorePct}%` }}
+                />
               </div>
             </div>
 
-            <div className={`p-4 rounded-2xl border ${claim.veredicto_ia === 'SOSPECHOSO' ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-              <p className="text-[11px] font-bold leading-relaxed flex items-center gap-2">
-                <AlertCircle size={14} />
-                {claim.veredicto_ia === 'SOSPECHOSO' 
-                  ? "Se han detectado anomalías en la evidencia. El caso requiere revisión humana manual."
-                  : "Análisis completado satisfactoriamente. No se detectaron patrones de fraude."}
+            <div className={`flex items-start gap-3 p-4 rounded-2xl border
+              ${isFraude ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
+              {isFraude
+                ? <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+                : <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />}
+              <p className={`text-[11px] font-semibold leading-relaxed ${isFraude ? 'text-red-600' : 'text-emerald-600'}`}>
+                {isFraude
+                  ? 'Se detectaron anomalías en la evidencia. El caso requiere revisión humana.'
+                  : 'Análisis completado. No se detectaron patrones de fraude.'}
               </p>
             </div>
           </div>
 
           {/* FINANCIALS */}
-          <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 flex flex-col justify-between">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600"><CircleDollarSign size={20}/></div>
-                <h3 className="font-bold text-sm">Monto de Reclamación</h3>
+          <div className="bg-white border border-slate-200 rounded-3xl p-7 flex flex-col gap-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                <CircleDollarSign size={17} className="text-emerald-500" />
               </div>
-              <div>
-                <p className="text-4xl font-black tracking-tighter">${claim.monto_reclamado.toLocaleString('es-MX')}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Estimación sujeta a deducible</p>
-              </div>
+              <h3 className="text-sm font-bold">Monto de Reclamación</h3>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl mt-6">
-               <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Descripción Declarada:</p>
-               <p className="text-[11px] text-[#0B1E3D] italic leading-relaxed">"{claim.descripcion_siniestro}"</p>
+            <div>
+              <p className="text-3xl font-bold tracking-tight">
+                ${claim.monto_reclamado.toLocaleString('es-MX')}
+                <span className="text-base font-medium text-slate-400 ml-1">MXN</span>
+              </p>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-1">
+                Estimación sujeta a deducible
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex-1">
+              <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Descripción declarada</p>
+              <p className="text-[11px] text-slate-600 italic leading-relaxed">"{claim.descripcion_siniestro}"</p>
             </div>
           </div>
         </div>
 
         {/* HELP FOOTER */}
-        <div className="bg-[#0B1E3D] rounded-[2.5rem] p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center"><Info className="text-blue-400" /></div>
-             <div>
-               <p className="text-sm font-bold">¿Tienes dudas sobre este folio?</p>
-               <p className="text-xs text-white/50">Contacta a un asesor legal ShieldLens de inmediato.</p>
-             </div>
+        <div className="bg-[#0B1E3D] rounded-3xl p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
+          <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/5 pointer-events-none" />
+          <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full border border-white/5 pointer-events-none" />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="w-10 h-10 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center shrink-0">
+              <Info size={16} className="text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">¿Tienes dudas sobre este folio?</p>
+              <p className="text-[11px] text-white/40 mt-0.5">Contacta a un asesor legal ShieldLens.</p>
+            </div>
           </div>
-          <button className="bg-blue-500 hover:bg-blue-400 px-8 py-3 rounded-xl text-xs font-bold transition-all shadow-xl shadow-blue-500/20">
+          <button className="relative z-10 shrink-0 bg-blue-500 hover:bg-blue-400 text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95">
             Hablar con soporte
           </button>
         </div>

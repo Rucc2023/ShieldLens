@@ -1,273 +1,337 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  User,
-  FileText,
-  Calendar,
-  MapPin,
-  Loader2,
+  ArrowLeft, AlertTriangle, CheckCircle2, XCircle,
+  User, FileText, Calendar, MapPin, Loader2,
+  Fingerprint, Scale, BrainCircuit, MessageSquareQuote,
   ShieldCheck,
-  Fingerprint,
-  Image as ImageIcon,
-  Scale,
 } from "lucide-react";
 
 export default function DetalleCasoForense() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  // Estados de la interfaz
-  const [activeTab, setActiveTab] = useState("vista-general");
-  const [caso, setCaso] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
 
-  // Carga de datos desde el backend
+  const [activeTab, setActiveTab] = useState("vista-general");
+  const [caso, setCaso]           = useState<any>(null);
+  const [loading, setLoading]     = useState(true);
+  const [updating, setUpdating]   = useState(false);
+
   const fetchDetalle = async () => {
     try {
       const res = await fetch(`http://localhost:5000/api/incidentes/detalle-forense/${id}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') || '' }
+        headers: { "x-auth-token": localStorage.getItem("token") || "" },
       });
       const json = await res.json();
-      if (json.success) {
-        setCaso(json.data);
-      }
+      if (json.success) setCaso(json.data);
     } catch (error) {
-      console.error("Error al conectar con la API:", error);
+      console.error("Error API:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (id) fetchDetalle();
-  }, [id]);
+  useEffect(() => { if (id) fetchDetalle(); }, [id]);
 
-  // Función para actualizar estados respetando los Constraints de la BD
   const handleDecision = async (decisionKey: string) => {
-    const confirmacion = window.confirm(`¿Confirmar acción de dictamen: ${decisionKey.toUpperCase()}?`);
-    if (!confirmacion) return;
-
+    if (!window.confirm(`¿Confirmar dictamen: ${decisionKey.toUpperCase()}?`)) return;
     setUpdating(true);
     try {
       const res = await fetch(`http://localhost:5000/api/incidentes/actualizar-estado/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token') || '' 
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": localStorage.getItem("token") || "",
         },
-        body: JSON.stringify({ decision: decisionKey }) 
+        body: JSON.stringify({ decision: decisionKey }),
       });
-
       const json = await res.json();
-      if (json.success) {
-        alert("ShieldBD Sincronizada Correctamente");
-        fetchDetalle(); // Refrescar datos
-      } else {
-        alert("ALERTA DE SISTEMA: " + json.message);
-      }
-    } catch (error) {
-      alert("Error de conexión con el servidor.");
-    } finally {
-      setUpdating(false);
-    }
+      if (json.success) { alert("ShieldBD sincronizada correctamente"); fetchDetalle(); }
+      else alert("Error: " + json.message);
+    } catch { alert("Error de conexión."); }
+    finally { setUpdating(false); }
   };
 
+  /* ── Loading ── */
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F0F4F8]">
-      <Loader2 className="animate-spin text-blue-500 mb-4" size={40} />
-      <p className="text-slate-500 font-bold text-xs uppercase tracking-widest italic">Accediendo a ShieldBD...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 gap-4">
+      <Loader2 size={28} className="animate-spin text-blue-400" />
+      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Sincronizando ShieldBD...</p>
     </div>
   );
 
   if (!caso) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F0F4F8]">
-        <XCircle className="text-red-400 mb-4" size={48} />
-        <p className="p-10 text-center font-bold font-sans text-slate-600">Expediente no localizado en el sistema forense.</p>
-        <button onClick={() => navigate(-1)} className="text-blue-500 font-bold underline">Regresar</button>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <p className="text-sm font-medium text-slate-400">Expediente no localizado.</p>
     </div>
   );
 
-  const riskScore = Math.round((1 - (caso.score_confianza_ia || 0)) * 100);
+  const riskScore   = Math.round((1 - (caso.score_confianza_ia || 0)) * 100);
+  const isHighRisk  = riskScore > 70;
+  const firstEvid   = caso.evidencias?.[0];
+
+  const TABS = [
+    { id: "vista-general",       label: "Vista General"       },
+    { id: "análisis-de-imágenes", label: "Análisis de Imágenes" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8] text-[#1A202C] p-6 font-sans">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* --- HEADER SUPERIOR --- */}
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <button 
-              onClick={() => navigate(-1)} 
-              className="flex items-center gap-2 text-gray-500 hover:text-black text-sm mb-4 transition-colors font-bold"
-            >
-              <ArrowLeft size={16} /> Volver al Panel
-            </button>
-            <h1 className="text-3xl font-black mb-1 italic tracking-tight text-[#0B1E3D] uppercase">
-                {caso.id_reclamacion?.substring(0,18) || "SIN ID"}
-            </h1>
-            <p className="text-gray-500 text-sm font-medium">
-               Asegurado: <span className="text-slate-800 font-bold">{caso.nombre_cifrado || "No disponible"}</span> • 
-               <span className="ml-2 text-blue-500 font-bold tracking-widest">ID: {caso.id_cliente?.substring(0,8) || "N/A"}</span>
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2 text-right">
-            <div className={`${riskScore > 70 ? 'bg-[#E53E3E]' : 'bg-orange-500'} text-white px-6 py-2 rounded-xl font-black shadow-lg shadow-red-500/10`}>
-              RIESGO IA: {riskScore}%
+    <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D]">
+      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-8 flex flex-col gap-6">
+
+        {/* ── HEADER ── */}
+        <div>
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-slate-400 hover:text-[#0B1E3D] text-xs font-medium transition-colors mb-5 group"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            Volver al Panel
+          </button>
+
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 mb-1">Expediente Forense</p>
+              <h1 className="text-2xl font-bold tracking-tight text-[#0B1E3D] font-mono">
+                {caso.id_reclamacion?.substring(0, 18)}
+              </h1>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-xs text-slate-500 font-medium">Asegurado:</span>
+                <span className="text-xs font-semibold text-[#0B1E3D]">{caso.nombre_cifrado}</span>
+                <span className="text-slate-300">·</span>
+                <span className="text-[10px] font-semibold text-blue-500 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
+                  ID: {caso.id_cliente?.substring(0, 8)}
+                </span>
+              </div>
             </div>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              ESTADO ACTUAL: {caso.estado_reclamacion || "PENDIENTE"}
-            </span>
+
+            <div className="flex items-center gap-3">
+              {/* Risk badge */}
+              <div className={`flex flex-col items-center px-6 py-3 rounded-2xl text-white
+                ${isHighRisk ? 'bg-red-500' : 'bg-orange-400'}`}>
+                <span className="text-[9px] font-semibold uppercase tracking-widest opacity-70">Riesgo IA</span>
+                <span className="text-2xl font-bold leading-tight">{riskScore}%</span>
+              </div>
+              {/* Status pill */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-center">
+                  {caso.estado_reclamacion}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-center">
+                  {caso.estado_gestion}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* --- TABS --- */}
-        <div className="flex gap-2 mb-8 p-1.5 bg-slate-200/50 w-fit rounded-2xl border border-slate-200">
-          {[
-            { id: "vista-general", label: "Vista General" },
-            { id: "análisis-de-imágenes", label: "Análisis de Imágenes" }
-          ].map((tab) => (
+        {/* ── TABS ── */}
+        <div className="flex gap-1.5 bg-white border border-slate-200 p-1.5 rounded-2xl w-fit">
+          {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-2 rounded-xl text-xs font-black uppercase transition-all
-                ${activeTab === tab.id ? "bg-[#0B1E3D] text-white shadow-lg" : "text-slate-500 hover:bg-white/40"}`}
+              className={`px-6 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-widest transition-all
+                ${activeTab === tab.id
+                  ? "bg-[#0B1E3D] text-white shadow-sm"
+                  : "text-slate-400 hover:text-[#0B1E3D] hover:bg-slate-50"}`}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* --- CONTENIDO: VISTA GENERAL --- */}
+        {/* ── VISTA GENERAL ── */}
         {activeTab === "vista-general" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-              <h3 className="text-xs font-black text-blue-500 uppercase mb-8 flex items-center gap-2 border-b pb-4 tracking-[0.15em]">
-                <User size={16} /> Perfil del Asegurado
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {/* Perfil */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-7">
+              <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
+                <User size={13} className="text-blue-500" /> Perfil del Asegurado
               </h3>
-              <div className="grid grid-cols-2 gap-y-8">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Nombre</p>
-                  <p className="font-bold text-slate-700">{caso.nombre_cifrado || "---"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Email</p>
-                  <p className="font-bold text-xs truncate text-slate-600">{caso.email_cifrado || "---"}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Teléfono</p>
-                  <p className="font-bold text-slate-700">{caso.telefono || '961 166 8107'}</p>
-                </div>
-                <div className="col-span-2 pt-4 border-t border-slate-50">
-                   <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Monto de Reclamación</p>
-                   <p className="font-black text-2xl text-emerald-600">
-                     ${caso.monto_reclamado?.toLocaleString() || "0.00"} MXN
-                   </p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+                {[
+                  { label: "Nombre",  value: caso.nombre_cifrado },
+                  { label: "Correo",  value: caso.email_cifrado,  small: true },
+                  { label: "Teléfono", value: caso.telefono || "No registrado" },
+                ].map((f, i) => (
+                  <div key={i} className={f.small ? "col-span-2" : ""}>
+                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{f.label}</p>
+                    <p className={`font-semibold text-[#0B1E3D] ${f.small ? "text-xs truncate" : "text-sm"}`}>{f.value}</p>
+                  </div>
+                ))}
+                <div className="col-span-2 pt-5 border-t border-slate-100">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Monto de la Reclamación</p>
+                  <p className="text-2xl font-bold text-emerald-500">${caso.monto_reclamado?.toLocaleString()} <span className="text-sm font-medium text-slate-400">MXN</span></p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
-              <h3 className="text-xs font-black text-blue-500 uppercase mb-8 flex items-center gap-2 border-b pb-4 tracking-[0.15em]">
-                <FileText size={16} /> Bitácora Incidente
+            {/* Bitácora */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-7">
+              <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
+                <FileText size={13} className="text-blue-500" /> Bitácora del Siniestro
               </h3>
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-slate-50 rounded-2xl"><Calendar size={18} className="text-slate-400" /></div>
-                   <p className="text-sm font-bold text-slate-700">
-                     {caso.fecha_reclamacion ? new Date(caso.fecha_reclamacion).toLocaleDateString() : "---"}
-                   </p>
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-slate-50 rounded-2xl"><MapPin size={18} className="text-slate-400" /></div>
-                   <p className="text-sm font-bold text-slate-700">{caso.lugar_incidente || 'Chiapas, MX'}</p>
-                </div>
-                <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                   <p className="text-xs text-slate-600 leading-relaxed italic font-medium">
-                     "{caso.descripcion_siniestro || 'Sin descripción detallada disponible.'}"
-                   </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* --- CONTENIDO: ANÁLISIS DE IMÁGENES --- */}
-        {activeTab === "análisis-de-imágenes" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            <div className="lg:col-span-2 space-y-4">
-               {caso.evidencias && caso.evidencias.length > 0 ? (
-                  caso.evidencias.map((img: any, idx: number) => (
-                    <div key={idx} className="rounded-4xl overflow-hidden border-8 border-white shadow-sm">
-                       <img 
-                        src={img.url_storage_imagen} 
-                        className="w-full h-auto object-cover" 
-                        alt={`Evidencia Forense ${idx + 1}`} 
-                        onError={(e:any) => e.target.src = 'https://via.placeholder.com/800x400?text=Error+al+cargar+imagen'}
-                       />
+              <div className="space-y-4">
+                {[
+                  { icon: Calendar, label: "Fecha del incidente", value: new Date(caso.fecha_reclamacion).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }) },
+                  { icon: MapPin,   label: "Lugar reportado",      value: caso.lugar_incidente || "Ubicación ShieldBD" },
+                ].map(({ icon: Icon, label, value }, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
+                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                      <Icon size={15} className="text-slate-400" />
                     </div>
-                  ))
-               ) : (
-                <div className="bg-white p-10 rounded-4xl text-center border-2 border-dashed border-slate-200">
-                    <ImageIcon className="mx-auto text-slate-300 mb-4" size={48} />
-                    <p className="text-slate-400 font-bold uppercase text-xs">No hay imágenes de evidencia vinculadas</p>
+                    <div>
+                      <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
+                      <p className="text-sm font-semibold text-[#0B1E3D]">{value}</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Descripción del siniestro</p>
+                  <p className="text-xs text-slate-500 leading-relaxed italic">"{caso.descripcion_siniestro}"</p>
                 </div>
-               )}
-            </div>
-            
-            <div className="bg-[#0B1E3D] p-8 rounded-[2.5rem] text-white h-fit shadow-2xl">
-               <Fingerprint className="text-blue-400 mb-4" size={32} />
-               <p className="text-[9px] font-black text-white/40 uppercase mb-2 tracking-widest">AutoML Analysis</p>
-               <p className="text-4xl font-black italic mb-6">
-                 {(caso.evidencias?.[0]?.resultado_automl_score * 100 || 0).toFixed(2)}%
-               </p>
-               <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-[10px] font-black mb-4">
-                  {caso.evidencias?.[0]?.deteccion_edicion ? '🚩 POSIBLE MANIPULACIÓN' : '✅ IMAGEN ÍNTEGRA'}
-               </div>
-               <div className="overflow-hidden">
-                  <p className="text-[8px] font-bold text-blue-300/50 uppercase mb-1">Hash SHA-256</p>
-                  <p className="text-[8px] font-mono break-all text-blue-200 bg-black/20 p-2 rounded-lg">
-                    {caso.evidencias?.[0]?.hash_sha256 || "N/A"}
-                  </p>
-               </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* --- PANEL DE RESOLUCIÓN --- */}
-        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-200 mb-10 text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5"><Scale size={120} /></div>
-          <h3 className="text-[10px] font-black text-slate-400 uppercase mb-10 tracking-[0.4em] flex items-center justify-center gap-2">
-            <ShieldCheck size={16} className="text-emerald-500" /> Panel de Dictamen ShieldLens
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
-            <button 
-              disabled={updating} 
-              onClick={() => handleDecision("aprobar")} 
-              className="bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 active:scale-95"
-            >
-              {updating ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />} APROBAR
-            </button>
-            
-            <button 
-              disabled={updating} 
-              onClick={() => handleDecision("fraude")} 
-              className="bg-[#E53E3E] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-700 transition-all shadow-xl shadow-red-500/20 disabled:opacity-50 active:scale-95"
-            >
-              {updating ? <Loader2 className="animate-spin" size={18} /> : <XCircle size={18} />} MARCAR FRAUDE
-            </button>
-            
-            <button 
-              disabled={updating} 
-              onClick={() => handleDecision("escalar")} 
-              className="bg-white border-2 border-slate-200 text-slate-500 py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all disabled:opacity-50 active:scale-95"
-            >
-              <AlertTriangle size={18} /> ESCALAR
-            </button>
+        {/* ── ANÁLISIS DE IMÁGENES ── */}
+        {activeTab === "análisis-de-imágenes" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Left: images + justification */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+
+              {/* Images */}
+              {caso.evidencias?.length > 0 && (
+                <div className="flex flex-col gap-4">
+                  {caso.evidencias.map((img: any, idx: number) => (
+                    <div key={idx} className="rounded-3xl overflow-hidden border-4 border-white shadow-lg">
+                      <img
+                        src={img.url_storage_imagen}
+                        className="w-full h-auto object-cover hover:scale-[1.02] transition-transform duration-700"
+                        alt={`Evidencia ${idx + 1}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* AI Justification */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-7 relative overflow-hidden">
+                <div className="absolute -top-8 -right-8 opacity-[0.03] pointer-events-none">
+                  <BrainCircuit size={160} />
+                </div>
+                <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5">
+                  <MessageSquareQuote size={13} className="text-blue-500" /> Justificación Técnica del Modelo
+                </h3>
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-5">
+                  <p className="text-sm text-slate-600 leading-relaxed italic">
+                    "{caso.justificacion_ia || "El modelo no ha generado una justificación descriptiva para este expediente."}"
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-semibold uppercase tracking-widest bg-[#0B1E3D] text-white px-3 py-1.5 rounded-full">
+                    Gemini Pro Vision
+                  </span>
+                  <span className="text-[9px] font-semibold uppercase tracking-widest bg-slate-100 text-slate-400 px-3 py-1.5 rounded-full">
+                    Protocolo: {caso.id_reclamacion?.substring(0, 8)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: forensic panel */}
+            <div className="flex flex-col gap-4">
+              <div className="bg-[#0B1E3D] rounded-3xl p-7 text-white sticky top-6 space-y-6">
+                <div className="flex items-center gap-2">
+                  <Fingerprint size={18} className="text-blue-400" />
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/30">AutoML Analysis</p>
+                </div>
+
+                {/* Score */}
+                <div>
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-white/30 mb-1">Score de confianza</p>
+                  <p className="text-4xl font-bold">
+                    {((firstEvid?.resultado_automl_score ?? 0) * 100).toFixed(1)}%
+                  </p>
+                </div>
+
+                {/* Score bar */}
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-400 rounded-full transition-all duration-700"
+                    style={{ width: `${((firstEvid?.resultado_automl_score ?? 0) * 100).toFixed(1)}%` }}
+                  />
+                </div>
+
+                {/* Manipulation badge */}
+                <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs font-semibold
+                  ${firstEvid?.deteccion_edicion
+                    ? "bg-red-500/10 border-red-500/30 text-red-400"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
+                  {firstEvid?.deteccion_edicion
+                    ? <><AlertTriangle size={14} /> Manipulación detectada</>
+                    : <><ShieldCheck size={14} /> Imagen verificada</>}
+                </div>
+
+                {/* SHA */}
+                <div className="h-px bg-white/10" />
+                <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-white/20 mb-2">SHA-256 Forense</p>
+                  <p className="text-[9px] font-mono break-all text-blue-300/70 leading-relaxed">
+                    {firstEvid?.hash_sha256 || "PENDIENTE_DE_HASH"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PANEL DE RESOLUCIÓN ── */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+            <Scale size={120} />
+          </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-6">
+              <Scale size={15} className="text-slate-400" />
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Dictamen Oficial del Ajustador</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+              <button
+                disabled={updating}
+                onClick={() => handleDecision("aprobar")}
+                className="py-4 rounded-2xl font-semibold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50
+                  bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white border border-emerald-100 hover:border-transparent"
+              >
+                {updating ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                Aprobar Pago
+              </button>
+
+              <button
+                disabled={updating}
+                onClick={() => handleDecision("fraude")}
+                className="py-4 rounded-2xl font-semibold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50
+                  bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-100 hover:border-transparent"
+              >
+                {updating ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
+                Confirmar Fraude
+              </button>
+
+              <button
+                disabled={updating}
+                onClick={() => handleDecision("escalar")}
+                className="py-4 rounded-2xl font-semibold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50
+                  bg-amber-50 hover:bg-amber-400 text-amber-600 hover:text-white border border-amber-100 hover:border-transparent"
+              >
+                <AlertTriangle size={15} />
+                Escalar Caso
+              </button>
+
+            </div>
           </div>
         </div>
 
