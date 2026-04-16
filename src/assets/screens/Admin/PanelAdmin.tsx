@@ -142,22 +142,35 @@ const AdminPanel = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await fetch('http://localhost:5000/api/auth/ajustadores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        setShowModal(false);
-        setFormData({ nombre: '', numero_empleado: '', rol: 'Analista', password: '' });
-        fetchData();
-      }
-    } catch { alert('No se pudo conectar con el servidor.'); }
-  };
+    
+    // PATRÓN QUE YA TE FUNCIONA:
+    const token = localStorage.getItem('token');
+    const headers = { 
+        'Content-Type': 'application/json', // Importante para POST
+        'x-auth-token': token || '' 
+    };
 
+    try {
+        const res = await fetch('http://localhost:5000/api/auth/ajustadores', {
+            method: 'POST',
+            headers: headers, // Usamos el objeto que ya probaste que funciona
+            body: JSON.stringify(formData),
+        });
+
+        if (res.ok) {
+            setShowModal(false);
+            setFormData({ nombre: '', numero_empleado: '', rol: 'Analista', password: '' });
+            fetchData();
+        } else {
+            const errorLog = await res.json();
+            alert(`Error ${res.status}: ${errorLog.msg || 'No autorizado'}`);
+        }
+    } catch  {
+        alert('No se pudo conectar con el servidor.');
+    }
+};
   /* Filtered rows */
   const rawList   = viewMode === 'ajustadores' ? ajustadores : clientes;
   const filtered  = rawList.filter((item) => {
