@@ -369,8 +369,12 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
 };
 
 /* ─── Step 3: Confirm ── */
-const StepConfirm = ({ navigate }: { navigate: (p: string) => void }) => {
+const StepConfirm = ({ data, navigate }: { data: ClaimData; navigate: (p: string) => void }) => {
   const [folio] = useState(() => `SHIELD-2026-${Math.floor(Math.random() * 8999) + 1000}`);
+
+  // Buscamos el label amigable del tipo de siniestro
+  const tipoSiniestro = CLAIM_TYPES.find(t => t.id === data.type)?.label || data.type;
+
   return (
     <div className="space-y-7 text-center">
       <div className="flex flex-col items-center gap-4 py-4">
@@ -388,11 +392,15 @@ const StepConfirm = ({ navigate }: { navigate: (p: string) => void }) => {
           <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Folio de seguimiento</span>
           <span className="text-sm font-bold text-white font-mono">{folio}</span>
         </div>
+        
         <div className="h-px bg-white/10" />
+
+        {/* --- DATOS REALES --- */}
         {[
-          { label: 'Estado',    value: 'En revisión'      },
-          { label: 'Prioridad', value: 'Normal'            },
-          { label: 'Plazo',     value: '1–3 días hábiles' },
+          { label: 'Siniestro',  value: tipoSiniestro },
+          { label: 'Monto Rec.', value: `$${Number(data.policy).toLocaleString('es-MX')} MXN` },
+          { label: 'Fecha',      value: data.date },
+          { label: 'Estado',     value: 'En revisión' },
         ].map((row, i) => (
           <div key={i} className="flex items-center justify-between">
             <span className="text-xs text-white/40">{row.label}</span>
@@ -405,7 +413,7 @@ const StepConfirm = ({ navigate }: { navigate: (p: string) => void }) => {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-blue-400 mb-2">Próximos pasos</p>
         {[
           'Recibirás un correo de confirmación en las próximas horas.',
-          'Un ajustador revisará tu caso en 1–3 días hábiles.',
+          `Un ajustador revisará tu caso en ${data.location} a la brevedad.`,
           'Da seguimiento desde "Actividad Reciente" en tu portal.',
         ].map((txt, i) => (
           <div key={i} className="flex items-start gap-2">
@@ -422,7 +430,6 @@ const StepConfirm = ({ navigate }: { navigate: (p: string) => void }) => {
     </div>
   );
 };
-
 /* ─── Main wizard ── */
 const NewClaim = () => {
   const navigate = useNavigate();
@@ -446,7 +453,7 @@ const NewClaim = () => {
           {step === 0 && <StepDetails data={data} setData={setData} onNext={() => setStep(1)} />}
           {step === 1 && <StepPhotos  files={files} setFiles={setFiles} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
           {step === 2 && <StepAI      files={files} data={data} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <StepConfirm navigate={navigate} />}
+          {step === 3 && <StepConfirm data= {data} navigate={navigate} />}
         </div>
       </div>
     </div>
