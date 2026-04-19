@@ -4,7 +4,7 @@ import { useUser } from '../../../context/useUser';
 import { 
   Shield, Users, LogOut, Plus, MoreVertical,
   BarChart2, X, ChevronDown, Search, Download,
-  CheckCircle, AlertCircle,
+  CheckCircle, AlertCircle, Mail, Phone, User, Lock
 } from 'lucide-react';
 
 /* ─── Interfaces ── */
@@ -105,7 +105,7 @@ const exportCSV = (data: (Ajustador | Cliente)[], mode: 'ajustadores' | 'cliente
   URL.revokeObjectURL(url);
 };
 
-/* ─── Main ── */
+/* ─── Main Component ── */
 const AdminPanel = () => {
   const navigate = useNavigate();
   const { userName, userRole } = useUser();
@@ -120,8 +120,14 @@ const AdminPanel = () => {
   const [logs,        setLogs]        = useState<LogForense[]>([]);
   const [loading,     setLoading]     = useState(false);
 
+  // Formulario unificado
   const [formData, setFormData] = useState({
-    nombre: '', numero_empleado: '', rol: 'Analista', password: '',
+    nombre: '', 
+    numero_empleado: '', // Ajustadores
+    email: '',           // Clientes
+    telefono: '',        // Clientes
+    rol: 'Analista', 
+    password: '',
   });
 
   const fetchData = async () => {
@@ -142,35 +148,39 @@ const AdminPanel = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // PATRÓN QUE YA TE FUNCIONA:
     const token = localStorage.getItem('token');
     const headers = { 
-        'Content-Type': 'application/json', // Importante para POST
+        'Content-Type': 'application/json',
         'x-auth-token': token || '' 
     };
 
+    // Endpoint dinámico según el modo actual del panel
+    const endpoint = viewMode === 'ajustadores' 
+        ? 'http://localhost:5000/api/auth/ajustadores' 
+        : 'http://localhost:5000/api/auth/register'; // Asegúrate que coincida con tu ruta de back
+
     try {
-        const res = await fetch('http://localhost:5000/api/auth/ajustadores', {
+        const res = await fetch(endpoint, {
             method: 'POST',
-            headers: headers, // Usamos el objeto que ya probaste que funciona
+            headers: headers,
             body: JSON.stringify(formData),
         });
 
         if (res.ok) {
             setShowModal(false);
-            setFormData({ nombre: '', numero_empleado: '', rol: 'Analista', password: '' });
+            setFormData({ nombre: '', numero_empleado: '', email: '', telefono: '', rol: 'Analista', password: '' });
             fetchData();
         } else {
-            const errorLog = await res.json();
-            alert(`Error ${res.status}: ${errorLog.msg || 'No autorizado'}`);
+            const errorData = await res.json();
+            alert(`Error ${res.status}: ${errorData.message || errorData.msg || 'No autorizado'}`);
         }
-    } catch  {
-        alert('No se pudo conectar con el servidor.');
+    } catch {
+        alert('Error al conectar con el servidor en el puerto 5000');
     }
-};
+  };
+
   /* Filtered rows */
   const rawList   = viewMode === 'ajustadores' ? ajustadores : clientes;
   const filtered  = rawList.filter((item) => {
@@ -190,14 +200,16 @@ const handleSubmit = async (e: React.FormEvent) => {
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D] flex">
 
-      {/* ── MODAL ── */}
+      {/* ── MODAL ADAPTATIVO ── */}
       {showModal && (
         <div className="fixed inset-0 bg-black/25 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md p-8">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md p-8 overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-7">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">ShieldLens Admin</p>
-                <h2 className="text-xl font-bold text-[#0B1E3D]">Nuevo Ajustador</h2>
+                <h2 className="text-xl font-bold text-[#0B1E3D]">
+                  Nuevo {viewMode === 'ajustadores' ? 'Ajustador' : 'Cliente'}
+                </h2>
               </div>
               <button onClick={() => setShowModal(false)}
                 className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors">
@@ -206,37 +218,71 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {[
-                { label: 'Nombre completo',      key: 'nombre',           type: 'text',     placeholder: 'Ej. Luis Pasquett'    },
-                { label: 'Número de empleado',   key: 'numero_empleado',  type: 'text',     placeholder: 'Aj-2026-02'           },
-                { label: 'Contraseña de acceso', key: 'password',         type: 'password', placeholder: 'Mínimo 8 caracteres'  },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key}>
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">{label}</label>
-                  <input
-                    type={type}
-                    value={formData[key as keyof typeof formData]}
-                    onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                    placeholder={placeholder}
-                    required
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all placeholder:text-slate-300"
-                  />
-                </div>
-              ))}
-
+              {/* CAMPO: NOMBRE (Común) */}
               <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Rol de usuario</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Nombre completo</label>
                 <div className="relative">
-                  <select
-                    value={formData.rol}
-                    onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all"
-                  >
-                    <option>Analista</option>
-                    <option>Auditor</option>
-                    <option>Administrador</option>
-                  </select>
-                  <ChevronDown size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <input type="text" value={formData.nombre} required placeholder="Ej. Juan Pérez"
+                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all" />
+                </div>
+              </div>
+
+              {viewMode === 'ajustadores' ? (
+                /* SECCIÓN EXCLUSIVA: AJUSTADORES */
+                <>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Número de empleado</label>
+                    <input type="text" value={formData.numero_empleado} required placeholder="Aj-2026-001"
+                      onChange={(e) => setFormData({ ...formData, numero_empleado: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Rol de usuario</label>
+                    <div className="relative">
+                        <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all">
+                            <option>Analista</option>
+                            <option>Auditor</option>
+                            <option>Administrador</option>
+                        </select>
+                        <ChevronDown size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* SECCIÓN EXCLUSIVA: CLIENTES */
+                <>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Correo Electrónico</label>
+                    <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                        <input type="email" value={formData.email} required placeholder="cliente@correo.com"
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Teléfono</label>
+                    <div className="relative">
+                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                        <input type="tel" value={formData.telefono} required placeholder="961..."
+                            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all" />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* CAMPO: PASSWORD (Común) */}
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Contraseña de acceso</label>
+                <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <input type="password" value={formData.password} required placeholder="••••••••"
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all" />
                 </div>
               </div>
 
@@ -247,7 +293,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </button>
                 <button type="submit"
                   className="flex-1 py-3 bg-[#0B1E3D] hover:bg-[#071328] text-white font-semibold rounded-xl text-xs transition-all active:scale-[0.98]">
-                  Guardar ajustador
+                  Guardar {viewMode === 'ajustadores' ? 'ajustador' : 'cliente'}
                 </button>
               </div>
             </form>
@@ -257,8 +303,6 @@ const handleSubmit = async (e: React.FormEvent) => {
 
       {/* ── SIDEBAR ── */}
       <aside className="w-64 shrink-0 bg-[#0B1E3D] min-h-screen flex flex-col p-7 gap-7">
-
-        {/* Brand */}
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
             <Shield size={13} className="text-white" />
@@ -269,7 +313,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
 
-        {/* User chip */}
         <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
           <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-500/30 text-white flex items-center justify-center font-bold text-xs shrink-0">
             {initials}
@@ -283,7 +326,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex flex-col gap-1">
           <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/25 px-1 mb-2">Navegación</p>
           {TABS.map(({ id, label, icon: Icon }) => (
@@ -300,19 +342,14 @@ const handleSubmit = async (e: React.FormEvent) => {
           ))}
         </nav>
 
-        {/* Logout */}
-        <button
-          onClick={() => navigate('/')}
-          className="mt-auto flex items-center gap-2 text-white/25 hover:text-red-400 transition-colors text-xs font-semibold"
-        >
+        <button onClick={() => navigate('/')}
+          className="mt-auto flex items-center gap-2 text-white/25 hover:text-red-400 transition-colors text-xs font-semibold">
           <LogOut size={14} /> Salir
         </button>
       </aside>
 
       {/* ── MAIN ── */}
       <main className="flex-1 p-6 lg:p-10 flex flex-col gap-6 min-h-screen">
-
-        {/* Page title */}
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">ShieldLens Admin</p>
           <h1 className="text-[1.75rem] font-bold tracking-tight">
@@ -322,29 +359,22 @@ const handleSubmit = async (e: React.FormEvent) => {
           </h1>
         </div>
 
-        {/* ── RESUMEN ── */}
         {activeTab === 'resumen' && (
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard label="Usuarios Activos"  value={String(ajustadores.length + clientes.length)} sub="+12% mensual"    accent="bg-blue-500"    />
               <MetricCard label="Ajustadores"        value={String(ajustadores.length)}                   sub="Personal activo" accent="bg-violet-500"  />
-              <MetricCard label="Clientes"           value={String(clientes.length)}                       sub="Asegurados"      accent="bg-emerald-500" />
-              <MetricCard label="Casos Cifrados"     value="1,243"                                         sub="Protección Azure" accent="bg-amber-500"  />
+              <MetricCard label="Clientes"           value={String(clientes.length)}                      sub="Asegurados"      accent="bg-emerald-500" />
+              <MetricCard label="Casos Cifrados"     value="1,243"                                        sub="Protección Azure" accent="bg-amber-500"  />
             </div>
             <RecentActivity logs={logs} />
           </div>
         )}
 
-        {/* ── USUARIOS ── */}
         {activeTab === 'usuarios' && (
           <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden">
-
-            {/* Toolbar */}
             <div className="px-7 py-5 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-
-              {/* Toggle + search */}
               <div className="flex items-center gap-3 w-full md:w-auto">
-                {/* Segmented control */}
                 <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
                   {(['ajustadores', 'clientes'] as const).map((mode) => (
                     <button key={mode} onClick={() => { setViewMode(mode); setSearch(''); }}
@@ -354,47 +384,26 @@ const handleSubmit = async (e: React.FormEvent) => {
                     </button>
                   ))}
                 </div>
-
-                {/* Search */}
                 <div className="relative flex-1 md:w-64">
                   <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar por nombre..."
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 focus:border-[#0B1E3D]/30 transition-all placeholder:text-slate-300"
-                  />
+                  <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0B1E3D]/10 transition-all placeholder:text-slate-300" />
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => exportCSV(rawList, viewMode)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B1E3D] rounded-xl text-xs font-semibold transition-all"
-                >
+                <button onClick={() => exportCSV(rawList, viewMode)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-[#0B1E3D] rounded-xl text-xs font-semibold transition-all">
                   <Download size={13} /> Exportar CSV
                 </button>
-                {viewMode === 'ajustadores' && (
-                  <button onClick={() => setShowModal(true)}
+                {/* BOTÓN ACTUALIZADO: Funciona para ambos modos */}
+                <button onClick={() => setShowModal(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-[#0B1E3D] hover:bg-[#071328] text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">
-                    <Plus size={13} /> Nuevo ajustador
-                  </button>
-                )}
+                    <Plus size={13} /> Nuevo {viewMode === 'ajustadores' ? 'ajustador' : 'cliente'}
+                </button>
               </div>
             </div>
 
-            {/* Result count */}
-            {search && (
-              <div className="px-7 py-2.5 bg-slate-50 border-b border-slate-100">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-                  {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} para "{search}"
-                </p>
-              </div>
-            )}
-
-            {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-50/80 border-b border-slate-100">
@@ -409,19 +418,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {loading ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-12 text-xs text-slate-400 font-medium">
-                        Conectando a Azure SQL Server...
-                      </td>
-                    </tr>
+                    <tr><td colSpan={4} className="text-center py-12 text-xs text-slate-400">Conectando a Azure SQL Server...</td></tr>
                   ) : filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="text-center py-12">
-                        <p className="text-xs text-slate-400 font-medium">
-                          {search ? `Sin resultados para "${search}"` : 'No hay usuarios registrados.'}
-                        </p>
-                      </td>
-                    </tr>
+                    <tr><td colSpan={4} className="text-center py-12 text-xs text-slate-400">{search ? `Sin resultados para "${search}"` : 'No hay usuarios registrados.'}</td></tr>
                   ) : (
                     filtered.map((item: Ajustador | Cliente) => {
                       const nombre    = 'nombre' in item ? item.nombre : item.nombre_cifrado;
@@ -445,16 +444,14 @@ const handleSubmit = async (e: React.FormEvent) => {
                           <td className="px-4 py-4 text-xs font-medium text-slate-500">{detalle}</td>
                           <td className="px-4 py-4">
                             <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-3 py-1 rounded-full border
-                              ${item.is_deleted
-                                ? 'bg-red-50 text-red-500 border-red-100'
-                                : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                              ${item.is_deleted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${item.is_deleted ? 'bg-red-400' : 'bg-emerald-400'}`} />
                               {item.is_deleted ? 'Inactivo' : 'Activo'}
                             </span>
                           </td>
                           <td className="px-8 py-4 text-right">
                             <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center ml-auto transition-colors">
-                              <MoreVertical size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                              <MoreVertical size={14} className="text-slate-300 group-hover:text-slate-500" />
                             </button>
                           </td>
                         </tr>
@@ -465,12 +462,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               </table>
             </div>
 
-            {/* Table footer */}
             {!loading && (
               <div className="px-8 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                <span className="text-[10px] text-slate-400 font-medium">
-                  {filtered.length} de {rawList.length} {viewMode}
-                </span>
+                <span className="text-[10px] text-slate-400 font-medium">{filtered.length} de {rawList.length} {viewMode}</span>
                 <span className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
                   {rawList.filter(i => !i.is_deleted).length} activos · {rawList.filter(i => i.is_deleted).length} inactivos
                 </span>
