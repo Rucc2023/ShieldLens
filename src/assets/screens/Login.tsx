@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios, { AxiosError } from 'axios';import { 
   Mail, Lock, ShieldCheck, 
-  X, User, Phone, ArrowRight, CheckCircle2, MapPin
+  X, User, Phone, CheckCircle2, MapPin
 } from 'lucide-react';
 import { useUser } from '../../context/useUser';
 
@@ -110,7 +110,7 @@ const handleLogin = async (e: React.FormEvent) => {
         <div className="w-full md:w-[55%] p-8 sm:p-12 bg-white/5 flex flex-col justify-center">
           <div className="flex items-center gap-5 mb-10">
             <div className="bg-white p-3 rounded-full shadow-lg border border-white/50 w-24 h-24 flex items-center justify-center overflow-hidden">
-              <img src="/src/assets/images/Logo.png" alt="Logo" className="w-20 h-20 object-contain rounded-full" />
+              <img src="/src/assets/images/Logo.png" alt="Logo" className="w-full h-full object-contain rounded-full" />
             </div>
             <div>
               <h2 className="text-3xl font-extrabold text-[#0B1E3D]">Iniciar Sesión</h2>
@@ -150,9 +150,7 @@ const handleLogin = async (e: React.FormEvent) => {
            <h1 className="text-4xl lg:text-5xl font-black text-white leading-tight uppercase">
              Seguimiento de <br/> <span className="text-[#0B1E3D]">Siniestros</span>
            </h1>
-           <button onClick={() => setShowRegister(true)} className="flex items-center gap-2.5 px-7 py-3.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-full transition-all text-sm">
-             <User size={16} /> Crear cuenta nueva <ArrowRight size={14} />
-           </button>
+      
         </div>
       </div>
 

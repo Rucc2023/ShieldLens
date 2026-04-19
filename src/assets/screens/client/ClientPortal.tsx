@@ -83,14 +83,24 @@ const ClientPortal = () => {
 
         {/* ── HEADER ── */}
         <header className="px-6 lg:px-10 pt-8 pb-6 flex justify-between items-center gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#0B1E3D] flex items-center justify-center shrink-0">
-              <ShieldCheck size={18} className="text-white" />
+          <div className="flex items-center gap-2">
+            {/* Contenedor del logo sin fondo */}
+            <div className="w-30 h-30 flex items-center justify-center shrink-0">
+              <img 
+                src="/src/assets/images/Logo.png" 
+                alt="ShieldLens Logo" 
+                className="w-full h-full object-contain" 
+              />
             </div>
+            
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">Portal de Gestión</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 leading-none mb-1">
+                Portal de Gestión
+              </p>
               <h1 className="text-2xl font-bold leading-tight tracking-tight">
-                Bienvenido, <span className="font-light text-slate-400">{perfil?.nombre?.split(' ')[0] || 'Ricardo'}</span>
+                Bienvenido, <span className="font-light text-slate-400">
+                  {perfil?.nombre?.split(' ')[0] || 'Ricardo'}
+                </span>
               </h1>
             </div>
           </div>

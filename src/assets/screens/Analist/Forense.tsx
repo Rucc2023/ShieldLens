@@ -152,7 +152,7 @@ const ForensicPanel = () => {
                 </span>
               </div>
 
-              <div className="flex flex-col gap-2.5 min-h-[350px]">
+              <div className="flex flex-col gap-2.5 min-h-87.5">
                 {loading ? (
                   <div className="flex flex-col items-center justify-center py-16 gap-3">
                     <Loader2 size={22} className="animate-spin text-blue-400" />
