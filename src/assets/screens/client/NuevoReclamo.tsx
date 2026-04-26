@@ -115,7 +115,7 @@ const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: 
           </Field>
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Monto reclamado (MXN)</label>
+          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Estimación sujeta a deducible</label>
           <Field icon={ShieldCheck}>
             <input type="number" placeholder="Ej. 15,000" value={data.policy}
               onChange={(e) => setData({ ...data, policy: e.target.value })} className={inputCls} />

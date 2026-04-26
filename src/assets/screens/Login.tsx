@@ -120,7 +120,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#0B1E3D]/70 ml-1 uppercase">Correo Electrónico</label>
+              <label className="text-xs font-bold text-[#0B1E3D]/70 ml-1 uppercase">Credencial</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[#0B1E3D]/40" size={16} />
                 <input required type="text" placeholder="usuario@seguros.com" value={identificador} onChange={(e) => setIdentificador(e.target.value)}

@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../../context/useUser';
 import { 
-  Shield, Users, LogOut, Plus,
+  Shield, Users, LogOut, Plus, MoreVertical,
   BarChart2, X, Search, Download,
-  CheckCircle, AlertCircle, User, ChevronRight,
+  CheckCircle, AlertCircle, CheckCircle2, XCircle, User, ChevronRight,
   FileText, UserCheck, UserCog,
 } from 'lucide-react';
 
@@ -35,85 +35,59 @@ interface LogForense {
   modulo_responsable: string;
 }
 
-/* ─── Donut chart (pure SVG) ── */
+/* ─── Donut chart ── */
 const DonutChart = ({ ajustadores, clientes }: { ajustadores: number; clientes: number }) => {
-  const total = ajustadores + clientes;
+  const total   = ajustadores + clientes;
+  const R       = 56;
+  const CX      = 80; const CY = 80;
+  const strokeW = 16;
+  const circumf = 2 * Math.PI * R;
+  const ajPct   = total > 0 ? ajustadores / total : 0;
+  const cliPct  = total > 0 ? clientes    / total : 0;
+  const ajDash  = circumf * ajPct;
+  const cliDash = circumf * cliPct;
+  const cliOff  = circumf * (1 - ajPct);
+
   if (total === 0) return (
-    <div className="flex items-center justify-center w-full h-48 text-slate-300 text-xs font-medium">Sin datos</div>
+    <div className="flex items-center justify-center w-full h-36 text-slate-300 text-xs">Sin datos</div>
   );
 
-  const R          = 60;
-  const CX         = 90;
-  const CY         = 90;
-  const strokeW    = 18;
-  const circumf    = 2 * Math.PI * R;
-
-  const ajPct  = ajustadores / total;
-  const cliPct = clientes    / total;
-
-  // Arc 1: ajustadores (violet) starting at top (-90°)
-  const ajDash  = circumf * ajPct;
-  const ajGap   = circumf - ajDash;
-  // Arc 2: clientes (emerald) — offset by ajustadores arc
-  const cliDash = circumf * cliPct;
-  const cliGap  = circumf - cliDash;
-  const cliOffset = circumf * (1 - ajPct); // rotate = ajPct of full circle
-
   return (
-    <div className="flex flex-col items-center gap-5">
-      <svg width="180" height="180" viewBox="0 0 180 180">
-        {/* Background ring */}
+    <div className="flex items-center gap-6">
+      <svg width="160" height="160" viewBox="0 0 160 160" className="shrink-0">
         <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f1f5f9" strokeWidth={strokeW} />
-
-        {/* Clientes arc (emerald) */}
-        <circle
-          cx={CX} cy={CY} r={R} fill="none"
-          stroke="#34d399"
-          strokeWidth={strokeW}
-          strokeDasharray={`${cliDash} ${cliGap}`}
-          strokeDashoffset={cliOffset}
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#34d399" strokeWidth={strokeW}
+          strokeDasharray={`${cliDash} ${circumf - cliDash}`}
+          strokeDashoffset={cliOff}
           strokeLinecap="round"
-          transform={`rotate(-90 ${CX} ${CY})`}
-          style={{ transition: 'stroke-dasharray 1s ease' }}
-        />
-
-        {/* Ajustadores arc (violet) */}
-        <circle
-          cx={CX} cy={CY} r={R} fill="none"
-          stroke="#8b5cf6"
-          strokeWidth={strokeW}
-          strokeDasharray={`${ajDash} ${ajGap}`}
+          transform={`rotate(-90 ${CX} ${CY})`} />
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="#8b5cf6" strokeWidth={strokeW}
+          strokeDasharray={`${ajDash} ${circumf - ajDash}`}
           strokeDashoffset={0}
           strokeLinecap="round"
-          transform={`rotate(-90 ${CX} ${CY})`}
-          style={{ transition: 'stroke-dasharray 1s ease' }}
-        />
-
-        {/* Center label */}
-        <text x={CX} y={CY - 8} textAnchor="middle" fill="#0B1E3D" fontSize="22" fontWeight="700">{total}</text>
-        <text x={CX} y={CY + 12} textAnchor="middle" fill="#94a3b8" fontSize="9" fontWeight="600" letterSpacing="1">USUARIOS</text>
+          transform={`rotate(-90 ${CX} ${CY})`} />
+        <text x={CX} y={CY - 6} textAnchor="middle" fill="#0B1E3D" fontSize="20" fontWeight="700">{total}</text>
+        <text x={CX} y={CY + 12} textAnchor="middle" fill="#94a3b8" fontSize="8" fontWeight="600" letterSpacing="1">USUARIOS</text>
       </svg>
-
-      {/* Legend */}
-      <div className="flex flex-col gap-2 w-full">
-        <div className="flex items-center justify-between px-1">
+      <div className="flex flex-col gap-3 flex-1">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-violet-400 shrink-0" />
             <span className="text-[11px] text-slate-500 font-medium">Ajustadores</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-sm font-bold text-[#0B1E3D]">{ajustadores}</span>
-            <span className="text-[10px] text-slate-400">{total > 0 ? `${Math.round(ajPct * 100)}%` : '—'}</span>
+            <span className="text-[10px] text-slate-400">{Math.round(ajPct * 100)}%</span>
           </div>
         </div>
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
             <span className="text-[11px] text-slate-500 font-medium">Clientes</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-sm font-bold text-[#0B1E3D]">{clientes}</span>
-            <span className="text-[10px] text-slate-400">{total > 0 ? `${Math.round(cliPct * 100)}%` : '—'}</span>
+            <span className="text-[10px] text-slate-400">{Math.round(cliPct * 100)}%</span>
           </div>
         </div>
       </div>
@@ -124,7 +98,7 @@ const DonutChart = ({ ajustadores, clientes }: { ajustadores: number; clientes: 
 /* ─── Recent activity ── */
 const RecentActivity = ({ logs }: { logs: LogForense[] }) => (
   <div className="bg-white border border-slate-200 rounded-3xl p-7">
-    <h2 className="text-sm font-bold text-[#0B1E3D] mb-6">Actividad Reciente</h2>
+    <h2 className="text-sm font-bold text-[#0B1E3D] mb-6">Auditoría Forense Reciente</h2>
     <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
       {logs.length === 0 ? (
         <p className="text-xs text-slate-400 text-center py-6">No hay logs registrados.</p>
@@ -147,6 +121,28 @@ const RecentActivity = ({ logs }: { logs: LogForense[] }) => (
           </div>
         ))
       )}
+    </div>
+  </div>
+);
+
+/* ─── Result modal ── */
+const ResultModal = ({ success, message, onClose }: { success: boolean; message: string; onClose: () => void }) => (
+  <div className="fixed inset-0 bg-black/25 backdrop-blur-sm z-70 flex items-center justify-center p-6">
+    <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5">
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto border
+        ${success ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+        {success
+          ? <CheckCircle2 size={30} className="text-emerald-400" />
+          : <XCircle      size={30} className="text-red-400" />}
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-[#0B1E3D]">{success ? 'Operación exitosa' : 'Algo salió mal'}</h3>
+        <p className="text-sm text-slate-400 mt-1 leading-relaxed">{message}</p>
+      </div>
+      <button onClick={onClose}
+        className="w-full py-3 bg-[#0B1E3D] hover:bg-[#071328] text-white font-semibold rounded-xl text-xs transition-all active:scale-[0.98]">
+        Entendido
+      </button>
     </div>
   </div>
 );
@@ -176,6 +172,7 @@ const AdminPanel = () => {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [search,          setSearch]          = useState('');
   const [polizaData,      setPolizaData]      = useState({ tipo_seguro: 'Deluxe' });
+  const [resultModal,     setResultModal]     = useState<{ success: boolean; message: string } | null>(null);
 
   const [ajustadores, setAjustadores] = useState<Ajustador[]>([]);
   const [clientes,    setClientes]    = useState<Cliente[]>([]);
@@ -214,8 +211,13 @@ const AdminPanel = () => {
         setShowModal(false);
         setFormData({ nombre: '', numero_empleado: '', email: '', telefono: '', rol: 'Analista', password: '' });
         fetchData();
+        setResultModal({ success: true, message: `${viewMode === 'ajustadores' ? 'Ajustador' : 'Cliente'} registrado correctamente en ShieldBD.` });
+      } else {
+        setResultModal({ success: false, message: 'No se pudo completar el registro. Verifica los datos e intenta de nuevo.' });
       }
-    } catch { alert('Error al registrar'); }
+    } catch {
+      setResultModal({ success: false, message: 'No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.' });
+    }
   };
 
   const handleAsignarPoliza = async (e: React.FormEvent) => {
@@ -226,8 +228,16 @@ const AdminPanel = () => {
         headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
         body: JSON.stringify({ id_cliente: selectedCliente?.id_cliente, ...polizaData }),
       });
-      if (res.ok) { setShowPolizaModal(false); setPolizaData({ tipo_seguro: 'Deluxe' }); alert('Póliza vinculada correctamente'); }
-    } catch { alert('Error al conectar con el servidor'); }
+      if (res.ok) {
+        setShowPolizaModal(false);
+        setPolizaData({ tipo_seguro: 'Deluxe' });
+        setResultModal({ success: true, message: 'La póliza fue vinculada correctamente. El cliente recibirá una notificación de activación.' });
+      } else {
+        setResultModal({ success: false, message: 'No se pudo vincular la póliza. Intenta de nuevo.' });
+      }
+    } catch {
+      setResultModal({ success: false, message: 'No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.' });
+    }
   };
 
   const rawList  = viewMode === 'ajustadores' ? ajustadores : clientes;
@@ -240,6 +250,10 @@ const AdminPanel = () => {
     ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2)
     : '??';
 
+  const totalUsuarios = ajustadores.length + clientes.length;
+  const ajActivos     = ajustadores.filter(a => !a.is_deleted).length;
+  const cliActivos    = clientes.filter(c => !c.is_deleted).length;
+
   const TABS = [
     { id: 'resumen',  label: 'Resumen',  icon: BarChart2 },
     { id: 'usuarios', label: 'Usuarios', icon: Users      },
@@ -251,12 +265,17 @@ const AdminPanel = () => {
     { value: 'Premium', label: 'Seguro de Auto Premium'          },
   ];
 
-  const totalUsuarios = ajustadores.length + clientes.length;
-  const ajActivos     = ajustadores.filter(a => !a.is_deleted).length;
-  const cliActivos    = clientes.filter(c => !c.is_deleted).length;
-
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-[#0B1E3D] flex">
+
+      {/* ── RESULT MODAL ── */}
+      {resultModal && (
+        <ResultModal
+          success={resultModal.success}
+          message={resultModal.message}
+          onClose={() => setResultModal(null)}
+        />
+      )}
 
       {/* ── MODAL REGISTRO ── */}
       {showModal && (
@@ -422,75 +441,93 @@ const AdminPanel = () => {
 
           {/* ── RESUMEN ── */}
           {activeTab === 'resumen' && (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
 
-              {/* Hero banner */}
-              
-
-              {/* ── STATS + CHART grid ── */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* LEFT: stat cards stacked */}
-                <div className="lg:col-span-7 flex flex-col gap-4">
-
-                  {/* Total */}
-                  <div className="bg-white border border-slate-200 rounded-3xl p-6 flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-[#0B1E3D] flex items-center justify-center shrink-0">
-                      <Users size={22} className="text-white" />
+              {/* Row 1: 4 stat cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {([
+                  { label: 'Total usuarios',   value: totalUsuarios,          icon: Users,      bg: 'bg-blue-50',    border: 'border-blue-100',    iconCls: 'text-blue-500'    },
+                  { label: 'Ajustadores',      value: ajustadores.length,     icon: UserCog,    bg: 'bg-violet-50',  border: 'border-violet-100',  iconCls: 'text-violet-500'  },
+                  { label: 'Clientes',         value: clientes.length,        icon: UserCheck,  bg: 'bg-emerald-50', border: 'border-emerald-100', iconCls: 'text-emerald-500' },
+                  { label: 'Usuarios activos', value: ajActivos + cliActivos, icon: CheckCircle,bg: 'bg-amber-50',   border: 'border-amber-100',   iconCls: 'text-amber-500'   },
+                ] as const).map((s, i) => (
+                  <div key={i} className="bg-white border border-slate-200 rounded-3xl p-5 flex flex-col gap-3">
+                    <div className={`w-10 h-10 rounded-2xl border flex items-center justify-center shrink-0 ${s.bg} ${s.border}`}>
+                      <s.icon size={17} className={s.iconCls} />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Total de usuarios registrados</p>
-                      <p className="text-4xl font-bold text-[#0B1E3D] tracking-tight">{totalUsuarios}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Activos</p>
-                      <p className="text-xl font-bold text-emerald-500">{ajActivos + cliActivos}</p>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">{s.label}</p>
+                      <p className="text-3xl font-bold text-[#0B1E3D] tracking-tight">{s.value}</p>
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  {/* Ajustadores + Clientes side by side */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white border border-slate-200 rounded-3xl p-5">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center shrink-0">
-                          <UserCog size={16} className="text-violet-500" />
-                        </div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Ajustadores</p>
-                      </div>
-                      <p className="text-3xl font-bold text-[#0B1E3D] tracking-tight mb-1">{ajustadores.length}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-violet-400 rounded-full" style={{ width: `${ajustadores.length > 0 ? (ajActivos / ajustadores.length) * 100 : 0}%` }} />
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-medium shrink-0">{ajActivos} activos</span>
-                      </div>
-                    </div>
+              {/* Row 2: status card + donut + activity bars */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
-                    <div className="bg-white border border-slate-200 rounded-3xl p-5">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                          <UserCheck size={16} className="text-emerald-500" />
+                {/* Log summary card */}
+                <div className="lg:col-span-5 relative overflow-hidden bg-[#0B1E3D] rounded-3xl p-7 text-white flex flex-col gap-5">
+                  <div className="absolute -right-10 -top-10 w-56 h-56 rounded-full border border-white/5 pointer-events-none" />
+                  <div className="absolute -right-4  -top-4  w-32 h-32 rounded-full border border-white/5 pointer-events-none" />
+
+                  <div className="relative z-10">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens · Bitácora</p>
+                    <h2 className="text-base font-bold">Resumen de Actividad</h2>
+                  </div>
+
+                  <div className="relative z-10 flex flex-col gap-2">
+                    {[
+                      {
+                        label: 'Registros de clientes',
+                        count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('registro') || l.accion_realizada?.toLowerCase().includes('cliente')).length,
+                        cls: 'text-blue-300',
+                        dot: 'bg-blue-400',
+                      },
+                      {
+                        label: 'Asignación de pólizas',
+                        count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('póliza') || l.accion_realizada?.toLowerCase().includes('poliza') || l.accion_realizada?.toLowerCase().includes('asign')).length,
+                        cls: 'text-violet-300',
+                        dot: 'bg-violet-400',
+                      },
+                      {
+                        label: 'Inicios de sesión',
+                        count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('login') || l.accion_realizada?.toLowerCase().includes('sesi') || l.accion_realizada?.toLowerCase().includes('acceso')).length,
+                        cls: 'text-emerald-300',
+                        dot: 'bg-emerald-400',
+                      },
+                      {
+                        label: 'Actualización de dictamen',
+                        count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('dictamen') || l.accion_realizada?.toLowerCase().includes('actuali') || l.accion_realizada?.toLowerCase().includes('estado')).length,
+                        cls: 'text-amber-300',
+                        dot: 'bg-amber-400',
+                      },
+                    ].map((cat, i) => (
+                      <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${cat.cls}`}>
+                        <div className="flex items-center gap-2.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cat.dot}`} />
+                          <span className="text-[11px] font-semibold">{cat.label}</span>
                         </div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Clientes</p>
+                        <span className="text-sm font-bold tabular-nums">{cat.count}</span>
                       </div>
-                      <p className="text-3xl font-bold text-[#0B1E3D] tracking-tight mb-1">{clientes.length}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${clientes.length > 0 ? (cliActivos / clientes.length) * 100 : 0}%` }} />
-                        </div>
-                        <span className="text-[10px] text-slate-400 font-medium shrink-0">{cliActivos} activos</span>
-                      </div>
-                    </div>
+                    ))}
+                  </div>
+
+                  <div className="relative z-10 flex items-center justify-between pt-3 border-t border-white/10 mt-auto">
+                    <span className="text-[10px] text-white/30 font-medium">Total Registrado</span>
+                    <span className="text-sm font-bold text-white">{logs.length}</span>
                   </div>
                 </div>
 
-                {/* RIGHT: donut chart */}
-                <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-7 flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
+                {/* Donut chart — right */}
+                <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-7 flex flex-col">
+                  <div className="flex items-center justify-between mb-5">
                     <h3 className="text-sm font-bold text-[#0B1E3D]">Distribución de usuarios</h3>
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">En tiempo real</span>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest bg-slate-50 border border-slate-100 px-3 py-1 rounded-full">
+                      En tiempo real
+                    </span>
                   </div>
-                  <div className="flex-1 flex items-center justify-center">
+                  <div className="flex-1 flex items-center">
                     <DonutChart ajustadores={ajustadores.length} clientes={clientes.length} />
                   </div>
                 </div>
@@ -574,9 +611,12 @@ const AdminPanel = () => {
                                 {viewMode === 'clientes' && (
                                   <button onClick={() => { setSelectedCliente(item as Cliente); setShowPolizaModal(true); }}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white border border-blue-100 hover:border-transparent rounded-xl text-[10px] font-semibold transition-all">
-                                     Asignar Póliza
+                                    <Shield size={11} /> Asignar Póliza
                                   </button>
                                 )}
+                                <button className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+                                  <MoreVertical size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                                </button>
                               </div>
                             </td>
                           </tr>

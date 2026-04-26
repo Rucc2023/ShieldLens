@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Plus, ShieldCheck, Zap, FileText, LogOut, 
   Clock, ChevronRight, ChevronLeft, Loader2,
-  HelpCircle, ChevronDown, MessageCircle,
+  HelpCircle, ChevronDown, 
 } from 'lucide-react';
 
 const PAGE_SIZE = 4;
@@ -153,7 +153,7 @@ const ClientPortal = () => {
                   </span>
                   <h2 className="text-2xl font-bold leading-snug mb-3">Reporta Siniestro</h2>
                   <p className="text-sm text-white/50 leading-relaxed mb-8">
-                    Nuestra red neuronal analiza tus evidencias para acelerar el dictamen y pago de tu seguro.
+                    Nuestro Sistema analiza tus evidencias para acelerar el dictamen de tu reclamación. Haz clic en "Nueva Reclamación" para iniciar el proceso y recibir una respuesta rápida y transparente.
                   </p>
                   <button
                     onClick={() => navigate('/portal/nuevo-reclamo')}
@@ -338,9 +338,6 @@ const ClientPortal = () => {
                 })}
               </div>
 
-              <button className="w-full mt-4 py-3 bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-2 border border-blue-100 hover:border-transparent">
-                <MessageCircle size={13} /> Iniciar Chat
-              </button>
             </div>
 
           </div>
