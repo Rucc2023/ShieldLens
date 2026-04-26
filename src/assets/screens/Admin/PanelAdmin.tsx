@@ -23,6 +23,7 @@ interface Cliente {
   email_cifrado: string;
   telefono: string;
   is_deleted: boolean;
+  tipo_poliza: string;
 }
 
 interface LogForense {
@@ -570,27 +571,29 @@ const AdminPanel = () => {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table key={viewMode} className="w-full text-left">
                   <thead className="bg-slate-50/80 border-b border-slate-100">
                     <tr>
                       <th className="px-8 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Usuario</th>
                       <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{viewMode === 'ajustadores' ? 'Rol' : 'Teléfono'}</th>
+                      {viewMode === 'clientes' &&<th className="px-7 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Póliza</th>}
                       <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Estado</th>
-                      <th className="px-8 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right">Acciones</th>
+                      {viewMode === 'clientes' &&<th className="px-8 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {loading ? (
-                      <tr><td colSpan={4} className="text-center py-12 text-xs text-slate-400 font-medium">Conectando a Azure SQL Server...</td></tr>
+                      <tr><td colSpan={viewMode === 'clientes' ? 5 : 3} className="text-center py-12 text-xs text-slate-400 font-medium">Conectando a Azure SQL Server...</td></tr>
                     ) : filtered.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-12 text-xs text-slate-400 font-medium">{search ? `Sin resultados para "${search}"` : 'No hay registros.'}</td></tr>
+                      <tr><td colSpan={viewMode === 'clientes' ? 5 : 3} className="text-center py-12 text-xs text-slate-400 font-medium">{search ? `Sin resultados para "${search}"` : 'No hay registros.'}</td></tr>
                     ) : (
+                      
                       filtered.map((item) => {
                         const nombre = 'nombre' in item ? item.nombre : item.nombre_cifrado;
-                        const key    = 'id_ajustador' in item ? item.id_ajustador : item.id_cliente;
+                        //const key    = 'id_ajustador' in item ? item.id_ajustador : item.id_cliente;
+                        const isCliente = 'nombre_cifrado' in item;
                         return (
-                          <tr key={key} className="hover:bg-slate-50/60 transition-colors group">
-                            <td className="px-8 py-4">
+                          <tr key={`${viewMode}-${'id_cliente' in item ? item.id_cliente : item.id_ajustador}`} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">                            <td className="px-8 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#0B1E3D] shrink-0">
                                   {nombre?.[0]?.toUpperCase()}
@@ -599,6 +602,11 @@ const AdminPanel = () => {
                               </div>
                             </td>
                             <td className="px-4 py-4 text-xs font-medium text-slate-500">{'rol' in item ? item.rol : item.telefono}</td>
+                            {viewMode === 'clientes' &&(<td className="px-7 py-4">
+                            <span className={`text-xs font-medium`}>
+                              {isCliente && item && 'tipo_poliza' in item ? item.tipo_poliza : 'N/A'}
+                            </span>
+                           </td>)}
                             <td className="px-4 py-4">
                               <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-3 py-1 rounded-full border
                                 ${item.is_deleted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
@@ -606,7 +614,7 @@ const AdminPanel = () => {
                                 {item.is_deleted ? 'Inactivo' : 'Activo'}
                               </span>
                             </td>
-                            <td className="px-8 py-4 text-right">
+                            {viewMode === 'clientes' && <td className="px-8 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
                                 {viewMode === 'clientes' && (
                                   <button onClick={() => { setSelectedCliente(item as Cliente); setShowPolizaModal(true); }}
@@ -618,7 +626,8 @@ const AdminPanel = () => {
                                   <MoreVertical size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
                                 </button>
                               </div>
-                            </td>
+                            </td>}
+                            
                           </tr>
                         );
                       })
