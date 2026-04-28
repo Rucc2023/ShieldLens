@@ -176,7 +176,7 @@ const ForensicPanel = () => {
   const paginatedHist  = casosFinalizados.slice(pageHist * PAGE_SIZE, pageHist * PAGE_SIZE + PAGE_SIZE);
 
   const STATS = [
-    { label: 'Total en BD',          value: loading ? '...' : cases.length,            color: 'text-white'       },
+    { label: 'Total',          value: loading ? '...' : cases.length,            color: 'text-white'       },
     { label: 'Pendientes',           value: loading ? '...' : casosPendientes.length,  color: 'text-amber-400'   },
     { label: 'Finalizados',          value: loading ? '...' : casosFinalizados.length, color: 'text-emerald-400' },
     { label: 'Siniestros reales',    value: loading ? '...' : casosReales,             color: 'text-blue-300'    },
