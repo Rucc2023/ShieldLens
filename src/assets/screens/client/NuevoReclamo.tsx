@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, CheckCircle2, Car, Home,
-  Zap, Package, ShieldCheck, Upload, X,
+  ArrowLeft, ArrowRight, CheckCircle2,
+  ShieldCheck, Upload, X,
   Brain, AlertTriangle, ShieldAlert, MapPin, Calendar,
   FileText, Sparkles, Loader2,
+  Car, MoveHorizontal, Slash, Box, RotateCcw, List,
 } from 'lucide-react';
 
 /* ─── Interfaces ── */
@@ -22,13 +23,44 @@ interface AIAnalysis {
   justificacion?: string;
 }
 
-/* ─── Data ── */
+/* ─── Claim types ── */
 const CLAIM_TYPES = [
-  { id: 'Colision',  label: 'Colisión vehicular', icon: Car,           desc: 'Choque con vehículo u objeto'    },
-  { id: 'Robo',      label: 'Robo o hurto',        icon: AlertTriangle, desc: 'Robo total, parcial o autopartes' },
-  { id: 'Incendio',  label: 'Incendio',             icon: Zap,           desc: 'Daños por fuego o explosión'    },
-  { id: 'Inmueble',  label: 'Daños al inmueble',    icon: Home,          desc: 'Daños estructurales al hogar'   },
-  { id: 'Otros',     label: 'Otros daños',          icon: Package,       desc: 'Cualquier otro siniestro'       },
+  {
+    id: 'Colision_Frontal_Trasera',
+    label: 'Colisión Frontal / Trasera',
+    icon: Car,
+    desc: 'Alcance entre vehículos, de frente o por detrás',
+  },
+  {
+    id: 'Colision_Lateral',
+    label: 'Colisión Lateral',
+    icon: MoveHorizontal,
+    desc: 'Embestida de costado, frecuente en cruces',
+  },
+  {
+    id: 'Raspado_Roce',
+    label: 'Raspado o Roce',
+    icon: Slash,
+    desc: 'Fricción entre vehículos en embotellamientos o carril',
+  },
+  {
+    id: 'Choque_Objeto_Fijo',
+    label: 'Choque con Objeto Fijo',
+    icon: Box,
+    desc: 'Impacto contra muros, postes, árboles o vallas',
+  },
+  {
+    id: 'Volcadura',
+    label: 'Volcadura',
+    icon: RotateCcw,
+    desc: 'El vehículo pierde estabilidad y voltea sobre su eje',
+  },
+  {
+    id: 'Colision_Cadena',
+    label: 'Colisión en Cadena',
+    icon: List,
+    desc: 'Choques múltiples con tres o más vehículos',
+  },
 ];
 
 const STEPS = ['Detalles', 'Fotografías', 'Análisis IA', 'Confirmación'];
@@ -45,8 +77,7 @@ const StepBar = ({ current }: { current: number }) => (
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
               ${done   ? 'bg-emerald-400 text-white'
               : active ? 'bg-[#0B1E3D] text-white ring-4 ring-[#0B1E3D]/10'
-              :          'bg-slate-100 text-slate-400'}`}
-            >
+              :          'bg-slate-100 text-slate-400'}`}>
               {done ? <CheckCircle2 size={14} /> : i + 1}
             </div>
             <span className={`text-[9px] font-semibold uppercase tracking-widest whitespace-nowrap
@@ -85,7 +116,7 @@ const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: 
         <p className="text-sm text-slate-400 mt-1">Completa la información básica para el reporte.</p>
       </div>
 
-      {/* Type selector */}
+      {/* Type selector — 3 cols to fit 6 types */}
       <div>
         <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-3 block">Tipo de siniestro</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -115,7 +146,7 @@ const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: 
           </Field>
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Estimación sujeta a deducible</label>
+          <label className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mb-1.5 block">Monto reclamado (MXN)</label>
           <Field icon={ShieldCheck}>
             <input type="number" placeholder="Ej. 15,000" value={data.policy}
               onChange={(e) => setData({ ...data, policy: e.target.value })} className={inputCls} />
@@ -159,7 +190,6 @@ const StepPhotos = ({ files, setFiles, onNext, onBack }: { files: File[]; setFil
       <p className="text-sm text-slate-400 mt-1">Sube la fotografía principal del daño para el análisis forense.</p>
     </div>
 
-    {/* Dropzone */}
     <label className="relative block border-2 border-dashed border-slate-200 hover:border-[#0B1E3D]/30 bg-slate-50 hover:bg-slate-100/60 rounded-2xl p-12 text-center cursor-pointer transition-all group">
       <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover:bg-[#0B1E3D]/10 flex items-center justify-center mx-auto mb-3 transition-colors">
         <Upload size={20} className="text-slate-400 group-hover:text-[#0B1E3D] transition-colors" />
@@ -170,7 +200,6 @@ const StepPhotos = ({ files, setFiles, onNext, onBack }: { files: File[]; setFil
         onChange={(e) => { if (e.target.files) setFiles([e.target.files[0]]); }} />
     </label>
 
-    {/* Preview */}
     {files.length > 0 && (
       <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-4 py-3 rounded-2xl">
         <div className="flex items-center gap-3">
@@ -188,7 +217,6 @@ const StepPhotos = ({ files, setFiles, onNext, onBack }: { files: File[]; setFil
       </div>
     )}
 
-    {/* Tip */}
     <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 p-4 rounded-2xl">
       <ShieldCheck size={14} className="text-blue-400 shrink-0 mt-0.5" />
       <p className="text-[11px] text-blue-600 leading-relaxed">
@@ -248,14 +276,14 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
     setIsSaving(true);
     try {
       const formData = new FormData();
-      formData.append('imagen',              files[0]);
-      formData.append('monto_reclamado',     data.policy);
-      formData.append('score_confianza_ia',  result.confianza.toString());
-      formData.append('veredicto_ia',        result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO');
-      formData.append('tipo_siniestro',      data.type);
-      formData.append('descripcion_siniestro', data.description);
-      formData.append('lugar_incidente',     data.location);
-      formData.append('justificacion_ia',    result.justificacion || '');
+      formData.append('imagen',                 files[0]);
+      formData.append('monto_reclamado',         data.policy);
+      formData.append('score_confianza_ia',      result.confianza.toString());
+      formData.append('veredicto_ia',            result.etiqueta === 'Reales' ? 'SINIESTRO REAL' : 'SOSPECHOSO');
+      formData.append('tipo_siniestro',          data.type);
+      formData.append('descripcion_siniestro',   data.description);
+      formData.append('lugar_incidente',         data.location);
+      formData.append('justificacion_ia',        result.justificacion || '');
 
       const response = await fetch('http://localhost:5000/api/incidentes/crear', {
         method: 'POST',
@@ -272,9 +300,9 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
     }
   };
 
-  const score     = (result?.confianza ?? 0) * 100;
-  const isFraude  = result?.etiqueta === 'Falsas';
-  const barColor  = score >= 80 ? 'bg-emerald-400' : score >= 60 ? 'bg-amber-400' : 'bg-red-400';
+  const score      = (result?.confianza ?? 0) * 100;
+  const isFraude   = result?.etiqueta === 'Falsas';
+  const barColor   = score >= 80 ? 'bg-emerald-400' : score >= 60 ? 'bg-amber-400' : 'bg-red-400';
   const scoreColor = score >= 80 ? 'text-emerald-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
 
   return (
@@ -285,7 +313,6 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
         <p className="text-sm text-slate-400 mt-1">Vertex AI + Gemini Flash procesan la evidencia fotográfica.</p>
       </div>
 
-      {/* Status card */}
       <div className={`rounded-3xl p-8 text-white relative overflow-hidden transition-all duration-500
         ${phase === 1 ? 'bg-[#0B1E3D]' : isFraude ? 'bg-red-500' : 'bg-emerald-500'}`}>
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full border border-white/5" />
@@ -306,11 +333,8 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
         </div>
       </div>
 
-      {/* Results */}
       {phase === 2 && result && (
         <div className="space-y-4">
-
-          {/* Score card */}
           <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Score de confianza</span>
@@ -327,14 +351,13 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
             </div>
           </div>
 
-          {/* Justification */}
           {result.justificacion && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-[#0B1E3D] flex items-center justify-center shrink-0">
                   <Sparkles size={13} className="text-white" />
                 </div>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Análisis del Perito IA</span>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Análisis de la IA</span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed italic border-l-2 border-[#0B1E3D]/20 pl-3">
                 "{result.justificacion}"
@@ -344,7 +367,6 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="flex items-start gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl">
           <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" />
@@ -371,9 +393,7 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
 /* ─── Step 3: Confirm ── */
 const StepConfirm = ({ data, navigate }: { data: ClaimData; navigate: (p: string) => void }) => {
   const [folio] = useState(() => `SHIELD-2026-${Math.floor(Math.random() * 8999) + 1000}`);
-
-  // Buscamos el label amigable del tipo de siniestro
-  const tipoSiniestro = CLAIM_TYPES.find(t => t.id === data.type)?.label || data.type;
+  const tipoLabel = CLAIM_TYPES.find(t => t.id === data.type)?.label || data.type;
 
   return (
     <div className="space-y-7 text-center">
@@ -392,12 +412,9 @@ const StepConfirm = ({ data, navigate }: { data: ClaimData; navigate: (p: string
           <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Folio de seguimiento</span>
           <span className="text-sm font-bold text-white font-mono">{folio}</span>
         </div>
-        
         <div className="h-px bg-white/10" />
-
-        {/* --- DATOS REALES --- */}
         {[
-          { label: 'Siniestro',  value: tipoSiniestro },
+          { label: 'Siniestro',  value: tipoLabel },
           { label: 'Monto Rec.', value: `$${Number(data.policy).toLocaleString('es-MX')} MXN` },
           { label: 'Fecha',      value: data.date },
           { label: 'Estado',     value: 'En revisión' },
@@ -430,6 +447,7 @@ const StepConfirm = ({ data, navigate }: { data: ClaimData; navigate: (p: string
     </div>
   );
 };
+
 /* ─── Main wizard ── */
 const NewClaim = () => {
   const navigate = useNavigate();
@@ -453,7 +471,7 @@ const NewClaim = () => {
           {step === 0 && <StepDetails data={data} setData={setData} onNext={() => setStep(1)} />}
           {step === 1 && <StepPhotos  files={files} setFiles={setFiles} onNext={() => setStep(2)} onBack={() => setStep(0)} />}
           {step === 2 && <StepAI      files={files} data={data} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-          {step === 3 && <StepConfirm data= {data} navigate={navigate} />}
+          {step === 3 && <StepConfirm data={data} navigate={navigate} />}
         </div>
       </div>
     </div>
