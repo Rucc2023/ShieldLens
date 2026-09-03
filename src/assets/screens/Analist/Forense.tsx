@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart as ReBarChart, Bar, XAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, ResponsiveContainer } from 'recharts';
 import RadialGauge from '../../components/RadialGauge';
+import PageBackground from '../../components/PageBackground';
 import {
   LogOut, ChevronDown, ChevronRight, ChevronLeft,
   Loader2, Activity, User, BarChart3, CheckCircle2,
@@ -41,7 +42,7 @@ const TONES: Record<Tone, { bg: string; icon: string }> = {
 const KpiCard = ({ icon: Icon, label, value, tone, sub }: { icon: any; label: string; value: string | number; tone: Tone; sub?: string }) => {
   const t = TONES[tone];
   return (
-    <div className="bg-white border border-slate-200/70 rounded-3xl p-5 flex flex-col gap-4 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 transition-all duration-200">
+    <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-5 flex flex-col gap-4 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 transition-all duration-200">
       <div className={`w-10 h-10 rounded-2xl ${t.bg} flex items-center justify-center`}>
         <Icon size={17} className={t.icon} strokeWidth={2.25} />
       </div>
@@ -143,10 +144,10 @@ const CaseRow = ({ item, navigate, dim = false }: { item: CaseRecord; navigate: 
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/analyst/case-details/${item.id_reclamacion}`); } }}
       role="button" tabIndex={0}
       className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all cursor-pointer group active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
-        ${dim ? 'bg-white/50 border-slate-100 hover:bg-white hover:border-slate-200' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200 hover:shadow-sm'}`}
+        ${dim ? 'bg-white/50 border-slate-100 hover:bg-white hover:border-slate-200' : 'bg-white/55 border-white/50 hover:bg-white hover:border-slate-200 hover:shadow-sm'}`}
     >
       <div className="flex items-center gap-4 min-w-0">
-        <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] flex items-center justify-center shrink-0">
           <User size={16} className="text-navy/40" />
         </div>
         <div className="min-w-0">
@@ -170,7 +171,7 @@ const CaseRow = ({ item, navigate, dim = false }: { item: CaseRecord; navigate: 
           </span>
           <span className="text-[10px] text-slate-400 font-mono">{item.id_reclamacion.substring(0, 8)}</span>
         </div>
-        <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:bg-navy group-hover:border-navy transition-all">
+        <div className="w-8 h-8 rounded-full bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] flex items-center justify-center group-hover:bg-navy group-hover:border-navy transition-all">
           <ChevronRight size={14} className="text-slate-400 group-hover:text-white" />
         </div>
       </div>
@@ -303,11 +304,12 @@ const ForensicPanel = () => {
     `px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 ${active ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`;
 
   return (
-    <div className="flex min-h-screen bg-app-bg text-navy" style={{ fontFamily: FONT }}>
+    <PageBackground>
+    <div className="flex min-h-screen text-navy" style={{ fontFamily: FONT }}>
       <main className="flex-1 flex flex-col min-h-screen">
 
         {/* TOP NAV */}
-        <nav className="px-8 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30">
+        <nav className="px-8 py-4 flex items-center justify-between border-b border-white/40 bg-white/70 backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-navy flex items-center justify-center shrink-0">
               <ShieldCheck size={18} className="text-white" strokeWidth={2.25} />
@@ -327,14 +329,14 @@ const ForensicPanel = () => {
             <button
               onClick={fetchCases}
               aria-label="Actualizar datos"
-              className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-gold-300 hover:text-gold-600 text-slate-400 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
+              className="w-9 h-9 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] hover:border-gold-300 hover:text-gold-600 text-slate-400 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
               title="Actualizar datos"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
 
             <button aria-label={casosSospechosos > 0 ? `Notificaciones: ${casosSospechosos} casos sospechosos` : 'Notificaciones'}
-              className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-400 flex items-center justify-center transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+              className="w-9 h-9 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] hover:border-slate-300 text-slate-400 flex items-center justify-center transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
               <Bell size={15} />
               {!loading && casosSospechosos > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
@@ -345,7 +347,7 @@ const ForensicPanel = () => {
 
             <div className="relative" ref={menuRef}>
               <button onClick={() => setMenuOpen(v => !v)} aria-haspopup="menu" aria-expanded={menuOpen}
-                className="flex items-center gap-3 bg-white border border-slate-200 pl-3.5 pr-2.5 py-2 rounded-2xl hover:border-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+                className="flex items-center gap-3 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] pl-3.5 pr-2.5 py-2 rounded-2xl hover:border-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
                 <div className="text-right hidden sm:block">
                   <p className="text-xs font-bold text-navy leading-none">Analista Senior</p>
                   <p className="text-[10px] text-gold-600 font-bold uppercase tracking-widest mt-1">Sesión Activa</p>
@@ -354,7 +356,7 @@ const ForensicPanel = () => {
                 <ChevronDown size={13} className={`text-slate-300 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
               <div role="menu"
-                className={`absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100
+                className={`absolute right-0 mt-2 w-48 bg-white/85 backdrop-blur-xl border border-white/70 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100
                   ${menuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
                 <div className="px-4 py-2.5 border-b border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cuenta del analista</p>
@@ -388,7 +390,7 @@ const ForensicPanel = () => {
           <div className="xl:col-span-7 flex flex-col gap-5">
 
             {/* Hero */}
-            <div className="relative overflow-hidden bg-navy rounded-[28px] p-8 sm:p-9 text-white flex flex-col justify-between min-h-[300px]">
+            <div className="relative overflow-hidden bg-navy/90 backdrop-blur-xl rounded-[28px] p-8 sm:p-9 text-white flex flex-col justify-between min-h-[300px]">
               <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full border border-white/[0.06]" />
               <div className="absolute -right-6  -top-6  w-48 h-48 rounded-full border border-white/[0.06]" />
 
@@ -432,13 +434,13 @@ const ForensicPanel = () => {
             </div>
 
             {/* Bar chart */}
-            <div className="bg-white border border-slate-200 rounded-[28px] p-7">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="text-sm font-bold tracking-tight">Reales vs Sospechosos</h3>
                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">Distribución del total de casos</p>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-slate-400 bg-white/60 border border-white/60 px-3 py-1.5 rounded-full uppercase tracking-widest">
                   {loading ? '...' : `${cases.length} total`}
                 </span>
               </div>
@@ -477,7 +479,7 @@ const ForensicPanel = () => {
             </div>
 
             {/* Estado de gestión */}
-            <div className="bg-navy rounded-[28px] p-7 text-white flex-1 flex flex-col">
+            <div className="bg-navy/90 backdrop-blur-xl rounded-[28px] p-7 text-white flex-1 flex flex-col">
               <h3 className="text-sm font-bold mb-6 flex items-center gap-2 tracking-tight">
                 <BarChart3 size={14} className="text-gold-400" /> Estado de Gestión
               </h3>
@@ -498,7 +500,7 @@ const ForensicPanel = () => {
 
         {/* CASE LIST */}
         <div ref={listRef} className="px-8 pb-10">
-          <div className="bg-white border border-slate-200 rounded-[28px] p-7">
+          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
                 <Activity size={15} className="text-gold-600 hidden sm:block" />
@@ -524,7 +526,7 @@ const ForensicPanel = () => {
                     onChange={e => setSearchTerm(e.target.value)}
                     placeholder="Buscar cliente o tipo..."
                     aria-label="Buscar por cliente o tipo de siniestro"
-                    className="pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-navy/10 focus:border-navy/30 w-full sm:w-52 transition-all"
+                    className="pl-9 pr-4 py-2.5 rounded-xl bg-white/60 border border-white/60 text-xs font-medium text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-navy/10 focus:border-navy/30 w-full sm:w-52 transition-all"
                   />
                 </div>
               </div>
@@ -569,6 +571,7 @@ const ForensicPanel = () => {
         </div>
       </main>
     </div>
+    </PageBackground>
   );
 };
 

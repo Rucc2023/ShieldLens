@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
+import PageBackground from '../../components/PageBackground';
+import {
   ArrowLeft, CheckCircle2, Clock, ShieldCheck, 
   CircleDollarSign, Info, Loader2, AlertCircle,
 } from 'lucide-react';
@@ -48,16 +49,20 @@ const ClaimStatus = () => {
   }, [id]);
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-100 gap-4">
+    <PageBackground>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
       <Loader2 size={26} className="animate-spin text-gold-500" />
       <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Cargando expediente...</p>
     </div>
+    </PageBackground>
   );
 
   if (!claim) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+    <PageBackground>
+    <div className="min-h-screen flex items-center justify-center">
       <p className="text-sm text-slate-400 font-medium">No se encontró el reporte.</p>
     </div>
+    </PageBackground>
   );
 
   const steps         = buildSteps(claim.estado_reclamacion);
@@ -74,7 +79,8 @@ const ClaimStatus = () => {
   })();
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-navy">
+    <PageBackground>
+    <div className="min-h-screen font-sans text-navy">
       <div className="max-w-4xl mx-auto px-6 lg:px-8 py-8 space-y-6">
 
         {/* BACK */}
@@ -107,10 +113,10 @@ const ClaimStatus = () => {
         </div>
 
         {/* ── TIMELINE ── */}
-        <div className="bg-white border border-slate-200 rounded-3xl px-8 pt-7 pb-8">
+        <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl px-8 pt-7 pb-8">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-sm font-bold text-navy">Progreso de la Reclamación</h3>
-            <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+            <span className="text-[10px] font-semibold text-slate-400 bg-white/55 border border-white/50 px-3 py-1 rounded-full uppercase tracking-widest">
               {completedCount} de {steps.length} pasos
             </span>
           </div>
@@ -173,7 +179,7 @@ const ClaimStatus = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* IA INSIGHTS */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-7 space-y-5">
+          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-7 space-y-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-gold-50 border border-gold-100 flex items-center justify-center shrink-0">
                 <ShieldCheck size={17} className="text-gold-600" />
@@ -208,7 +214,7 @@ const ClaimStatus = () => {
           </div>
 
           {/* FINANCIALS */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-7 flex flex-col gap-5">
+          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-7 flex flex-col gap-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
                 <CircleDollarSign size={17} className="text-emerald-500" />
@@ -226,7 +232,7 @@ const ClaimStatus = () => {
               </p>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex-1">
+            <div className="bg-white/55 border border-white/50 rounded-2xl p-4 flex-1">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Descripción declarada</p>
               <p className="text-[11px] text-slate-600 italic leading-relaxed">"{claim.descripcion_siniestro}"</p>
             </div>
@@ -234,7 +240,7 @@ const ClaimStatus = () => {
         </div>
 
         {/* HELP FOOTER */}
-        <div className="bg-navy rounded-3xl p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
+        <div className="bg-navy/90 backdrop-blur-xl rounded-3xl p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
           <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/5 pointer-events-none" />
           <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full border border-white/5 pointer-events-none" />
           <div className="relative z-10 flex items-center gap-4">
@@ -253,6 +259,7 @@ const ClaimStatus = () => {
 
       </div>
     </div>
+    </PageBackground>
   );
 };
 

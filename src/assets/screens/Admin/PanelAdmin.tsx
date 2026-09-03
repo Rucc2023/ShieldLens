@@ -1,14 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useUser } from '../../../context/useUser';
 import { useDismissableModal } from '../../components/useDismissableModal';
+import PageBackground from '../../components/PageBackground';
 import {
   Shield, Users, LogOut, Plus, MoreVertical,
   BarChart2, X, Search, Download,
-  CheckCircle, AlertCircle, CheckCircle2, XCircle, User, ChevronRight,
-  FileText, UserCheck, UserCog,
+  CheckCircle, AlertCircle, CheckCircle2, XCircle, User, ChevronRight, ChevronLeft,
+  FileText, UserCheck, UserCog, ShieldCheck, Activity,
 } from 'lucide-react';
+
+/**
+ * Design system for this module (documented shape/color scale — impeccable "Operate" mode +
+ * taste-skill consistency locks):
+ *   Radius  → rounded-3xl: panels/cards/modals · rounded-2xl: icon/avatar badges · rounded-xl: buttons/inputs/nav items · rounded-full: pills/dots/status
+ *   Color   → navy: marca/selección · dorado: CTA sobre navy + valor/IA · azul: reservado a tips · emerald/red: solo estado semántico (activo/inactivo, éxito/error)
+ *   Surface → glass: bg-white/85 backdrop-blur-xl border border-white/70 sobre PageBackground (Fondo3)
+ *   Motion  → Tailwind utilities only (transition/duration/ease + active:scale), sin CSS nuevo
+ */
 
 /* ─── Interfaces ── */
 interface Ajustador {
@@ -40,14 +50,58 @@ interface LogForense {
 
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
+const timeAgo = (iso: string) => {
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return 'ahora';
+  if (diffMin < 60) return `hace ${diffMin}m`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `hace ${diffHr}h`;
+  return `hace ${Math.floor(diffHr / 24)}d`;
+};
+
+/* ─── KPI card ── */
+type KpiTone = 'navy' | 'gold' | 'emerald' | 'blue';
+
+const KPI_TONES: Record<KpiTone, { bg: string; icon: string; bar: string }> = {
+  navy:    { bg: 'bg-navy/10',     icon: 'text-navy',        bar: 'bg-navy' },
+  gold:    { bg: 'bg-gold-50',     icon: 'text-gold-600',    bar: 'bg-gold-400' },
+  emerald: { bg: 'bg-emerald-50',  icon: 'text-emerald-500', bar: 'bg-emerald-400' },
+  blue:    { bg: 'bg-blue-50',     icon: 'text-blue-500',    bar: 'bg-blue-400' },
+};
+
+const KpiCard = ({ icon: Icon, label, value, sub, fill, tone }: {
+  icon: any; label: string; value: string | number; sub: string; fill: number; tone: KpiTone;
+}) => {
+  const t = KPI_TONES[tone];
+  return (
+    <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">{label}</p>
+          <h3 className="text-3xl font-extrabold text-navy mt-1 tabular-nums">{value}</h3>
+        </div>
+        <div className={`w-10 h-10 rounded-2xl ${t.bg} flex items-center justify-center shrink-0`}>
+          <Icon size={17} className={t.icon} strokeWidth={2.25} />
+        </div>
+      </div>
+      <div className="mt-4 pt-3 border-t border-slate-100">
+        <span className="text-[11px] font-semibold text-slate-500">{sub}</span>
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1.5">
+          <div className={`h-full rounded-full transition-[width] duration-500 ${t.bar}`} style={{ width: `${fill}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ─── Donut chart ── */
-const DONUT_COLORS = { Ajustadores: 'var(--color-gold-400)', Clientes: '#34d399' };
+const DONUT_COLORS = { Ajustadores: 'var(--color-gold-400)', Clientes: '#10b981' };
 
 const DonutTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
   if (!active || !payload?.length) return null;
   const { name, value } = payload[0];
   return (
-    <div className="bg-navy-dark border border-white/10 rounded-xl px-3 py-2 shadow-xl">
+    <div className="bg-navy-dark border border-white/10 rounded-2xl px-3 py-2 shadow-xl">
       <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">{name}</p>
       <p className="text-sm font-bold text-white tabular-nums">{value}</p>
     </div>
@@ -62,44 +116,44 @@ const DonutChart = ({ ajustadores, clientes }: { ajustadores: number; clientes: 
   ];
 
   if (total === 0) return (
-    <div className="flex items-center justify-center w-full h-36 text-white/30 text-xs">Sin datos</div>
+    <div className="flex items-center justify-center w-full h-36 text-slate-300 text-xs">Sin datos</div>
   );
 
   return (
-    <div className="flex items-center gap-6">
-      <div className="relative shrink-0" style={{ width: 140, height: 140 }} role="img" aria-label={`${total} usuarios: ${ajustadores} ajustadores, ${clientes} clientes`}>
-        <PieChart width={140} height={140}>
+    <div className="flex flex-col sm:flex-row items-center gap-6 w-full">
+      <div className="relative shrink-0" style={{ width: 132, height: 132 }} role="img" aria-label={`${total} usuarios: ${ajustadores} ajustadores, ${clientes} clientes`}>
+        <PieChart width={132} height={132}>
           <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%"
-            innerRadius={48} outerRadius={64} paddingAngle={3} stroke="none"
+            innerRadius={44} outerRadius={60} paddingAngle={3} stroke="none"
             startAngle={90} endAngle={-270} animationDuration={600} animationEasing="ease-out">
             {data.map((entry) => <Cell key={entry.name} fill={DONUT_COLORS[entry.name as keyof typeof DONUT_COLORS]} />)}
           </Pie>
           <Tooltip content={<DonutTooltip />} />
         </PieChart>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xl font-bold text-white leading-none tabular-nums">{total}</span>
-          <span className="text-[10px] font-semibold text-white/35 uppercase tracking-widest mt-1">Usuarios</span>
+          <span className="text-xl font-extrabold text-navy leading-none tabular-nums">{total}</span>
+          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Usuarios</span>
         </div>
       </div>
-      <div className="flex flex-col gap-3 flex-1">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-gold-400 shrink-0" />
-            <span className="text-[11px] text-white/50 font-medium">Ajustadores</span>
+      <div className="flex flex-col gap-2.5 flex-1 w-full">
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-gold-50/70 border border-gold-100">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-gold-500 ring-2 ring-gold-100 shrink-0" />
+            <span className="text-xs font-bold text-slate-700">Ajustadores</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-white">{ajustadores}</span>
-            <span className="text-[10px] text-white/40">{pct(ajustadores, total)}%</span>
+          <div className="text-right">
+            <div className="text-xs font-extrabold text-gold-700 tabular-nums">{ajustadores}</div>
+            <div className="text-[10px] font-semibold text-slate-400">{pct(ajustadores, total)}%</div>
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
-            <span className="text-[11px] text-white/50 font-medium">Clientes</span>
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-100">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-100 shrink-0" />
+            <span className="text-xs font-bold text-slate-700">Clientes</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-white">{clientes}</span>
-            <span className="text-[10px] text-white/40">{pct(clientes, total)}%</span>
+          <div className="text-right">
+            <div className="text-xs font-extrabold text-emerald-700 tabular-nums">{clientes}</div>
+            <div className="text-[10px] font-semibold text-slate-400">{pct(clientes, total)}%</div>
           </div>
         </div>
       </div>
@@ -107,35 +161,52 @@ const DonutChart = ({ ajustadores, clientes }: { ajustadores: number; clientes: 
   );
 };
 
-/* ─── Recent activity ── */
-const RecentActivity = ({ logs }: { logs: LogForense[] }) => (
-  <div className="bg-white border border-slate-200 rounded-3xl p-7">
-    <h2 className="text-sm font-bold text-navy mb-6">Auditoría Forense Reciente</h2>
-    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-      {logs.length === 0 ? (
-        <p className="text-xs text-slate-400 text-center py-6">No hay logs registrados.</p>
-      ) : (
-        logs.map((log) => (
-          <div key={log.id_log} className="flex gap-3 items-start p-2 -mx-2 rounded-xl hover:bg-slate-50 transition-colors">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0
-              ${log.resultado === 'exito' ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
-              {log.resultado === 'exito'
-                ? <CheckCircle size={13} className="text-emerald-500" />
-                : <AlertCircle size={13} className="text-red-400" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-navy leading-snug">{log.accion_realizada}</p>
-              <p className="text-[10px] text-slate-400 truncate mt-0.5">{log.usuario_ejecuta || 'Sistema'} · IP <span className="font-mono">{log.ip_origin}</span></p>
-            </div>
-            <span className="text-[10px] text-slate-300 whitespace-nowrap mt-0.5 font-mono">
-              {new Date(log.fecha_hora_utc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        ))
+/* ─── Recent activity / audit feed ── */
+const RecentActivity = ({ logs }: { logs: LogForense[] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? logs : logs.slice(0, 6);
+
+  return (
+    <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex-1 flex flex-col justify-between">
+      <div>
+        <h4 className="text-sm font-bold text-navy flex items-center gap-2">
+          <Activity size={14} className="text-gold-600" /> Auditoría en Tiempo Real
+        </h4>
+        <p className="text-xs text-slate-400 mt-0.5 mb-4">Últimos eventos del sistema</p>
+        <div className="space-y-2.5">
+          {logs.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-8">No hay logs registrados.</p>
+          ) : (
+            visible.map((log) => (
+              <div key={log.id_log} className="flex items-start justify-between gap-2 p-2.5 rounded-2xl hover:bg-white/60 transition border border-transparent hover:border-white/50">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5
+                    ${log.resultado === 'exito' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                    {log.resultado === 'exito' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-navy leading-snug truncate">{log.accion_realizada}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{log.usuario_ejecuta || 'Sistema'}</p>
+                    <span className="font-mono text-[10px] text-slate-400">IP: {log.ip_origin}</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-medium text-slate-400 whitespace-nowrap">{timeAgo(log.fecha_hora_utc)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      {logs.length > 6 && (
+        <div className="pt-4 mt-2 border-t border-slate-100">
+          <button onClick={() => setExpanded(v => !v)}
+            className="w-full py-2 bg-white/60 hover:bg-white/80 text-navy text-xs font-semibold rounded-xl border border-white/50 transition text-center">
+            {expanded ? 'Mostrar menos' : `Ver ${logs.length - 6} registros más`}
+          </button>
+        </div>
       )}
-    </div>
-  </div>
-);
+    </section>
+  );
+};
 
 /* ─── Result modal ── */
 const ResultModal = ({ success, message, onClose }: { success: boolean; message: string; onClose: () => void }) => {
@@ -144,8 +215,8 @@ const ResultModal = ({ success, message, onClose }: { success: boolean; message:
   return (
     <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-[70] flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${visible ? "opacity-100" : "opacity-0"}`}>
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="admin-result-title"
-        className={`bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto border
+        className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border
           ${success ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
           {success
             ? <CheckCircle2 size={30} className="text-emerald-400" />
@@ -177,6 +248,9 @@ const exportCSV = (data: (Ajustador | Cliente)[], mode: 'ajustadores' | 'cliente
   a.click();
 };
 
+const PAGE_SIZE = 6;
+const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
 /* ─── Main ── */
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -188,6 +262,7 @@ const AdminPanel = () => {
   const [showPolizaModal, setShowPolizaModal] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [search,          setSearch]          = useState('');
+  const [tablePage,       setTablePage]       = useState(0);
   const [polizaData,      setPolizaData]      = useState({ tipo_seguro: 'Deluxe' });
   const [resultModal,     setResultModal]     = useState<{ success: boolean; message: string } | null>(null);
 
@@ -199,6 +274,10 @@ const AdminPanel = () => {
   const [formData, setFormData] = useState({
     nombre: '', numero_empleado: '', email: '', telefono: '', rol: 'Analista', password: '',
   });
+
+  const topRef          = useRef<HTMLDivElement>(null);
+  const usuariosRef      = useRef<HTMLDivElement>(null);
+  const searchInputRef  = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -216,6 +295,7 @@ const AdminPanel = () => {
   };
 
   useEffect(() => { fetchData(); }, []);
+  useEffect(() => { setTablePage(0); }, [search, viewMode]);
 
   const registroModal = useDismissableModal(showModal, () => setShowModal(false));
   const polizaModal   = useDismissableModal(showPolizaModal, () => setShowPolizaModal(false));
@@ -266,6 +346,9 @@ const AdminPanel = () => {
     return name.toLowerCase().includes(search.toLowerCase());
   });
 
+  const totalTablePages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedUsers  = filtered.slice(tablePage * PAGE_SIZE, tablePage * PAGE_SIZE + PAGE_SIZE);
+
   const initials = userName
     ? userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2)
     : '??';
@@ -285,426 +368,393 @@ const AdminPanel = () => {
     { value: 'Premium', label: 'Seguro de Auto Premium'          },
   ];
 
+  const POLICY_STYLES: Record<string, { bar: string; dot: string }> = {
+    Deluxe:  { bar: 'bg-navy',        dot: 'bg-navy' },
+    Amplia:  { bar: 'bg-gold-500',    dot: 'bg-gold-500' },
+    Premium: { bar: 'bg-emerald-500', dot: 'bg-emerald-500' },
+    Otra:    { bar: 'bg-blue-400',    dot: 'bg-blue-400' },
+  };
+  // ShieldBD guarda a veces el valor corto ('Deluxe') y a veces la etiqueta completa
+  // ('Seguro de Auto Deluxe'), además del centinela 'Sin póliza' — se normaliza aquí
+  // para que la distribución no cuente clientes sin plan como si tuvieran uno.
+  const normalizePoliza = (raw?: string): string | null => {
+    if (!raw || raw === 'Sin póliza') return null;
+    const match = PLAN_OPTIONS.find(p => raw === p.value || raw === p.label);
+    return match ? match.value : 'Otra';
+  };
+  const tienePoliza        = (c: Cliente) => normalizePoliza(c.tipo_poliza) !== null;
+  const policyBreakdown    = PLAN_OPTIONS.map(p => ({ ...p, count: clientes.filter(c => normalizePoliza(c.tipo_poliza) === p.value).length }));
+  const clientesSinPoliza  = clientes.filter(c => !tienePoliza(c)).length;
+  const clientesOtraPoliza = clientes.filter(c => normalizePoliza(c.tipo_poliza) === 'Otra').length;
+  const clientesConPoliza  = clientes.length - clientesSinPoliza;
+  const policyDenominator  = clientes.length || 1;
+
+  const weekActivity = WEEKDAY_LABELS.map((label, idx) => {
+    const jsDay = (idx + 1) % 7; // Lun=1 ... Sáb=6, Dom=0
+    return { label, count: logs.filter(l => new Date(l.fecha_hora_utc).getDay() === jsDay).length };
+  });
+  const maxWeekCount = Math.max(1, ...weekActivity.map(d => d.count));
+
+  const goToTab = (tab: 'resumen' | 'usuarios') => {
+    setActiveTab(tab);
+    const ref = tab === 'usuarios' ? usuariosRef : topRef;
+    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
+
+  const focusSearch = () => {
+    goToTab('usuarios');
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
   return (
-    <div className="min-h-screen bg-app-bg font-sans text-navy flex">
+    <PageBackground>
+    <div className="min-h-screen font-sans text-navy">
+      <div className="max-w-[1580px] mx-auto p-4 md:p-6 lg:p-8 space-y-6">
 
-      {/* ── RESULT MODAL ── */}
-      {resultModal && (
-        <ResultModal
-          success={resultModal.success}
-          message={resultModal.message}
-          onClose={() => setResultModal(null)}
-        />
-      )}
+        {/* ── RESULT MODAL ── */}
+        {resultModal && (
+          <ResultModal
+            success={resultModal.success}
+            message={resultModal.message}
+            onClose={() => setResultModal(null)}
+          />
+        )}
 
-      {/* ── MODAL REGISTRO ── */}
-      {showModal && (
-        <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-50 flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${registroModal.visible ? "opacity-100" : "opacity-0"}`}>
-          <div ref={registroModal.panelRef} role="dialog" aria-modal="true" aria-labelledby="registro-modal-title"
-            className={`bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-md p-8 overflow-y-auto max-h-[90vh] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${registroModal.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-            <div className="flex justify-between items-center mb-7">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-0.5">ShieldLens Admin</p>
-                <h2 id="registro-modal-title" className="text-xl font-bold text-navy">Nuevo {viewMode === 'ajustadores' ? 'Ajustador' : 'Cliente'}</h2>
-              </div>
-              <button onClick={() => registroModal.dismiss()} aria-label="Cerrar"
-                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-                <X size={14} />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Nombre completo</label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                  <input type="text" value={formData.nombre} required onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+        {/* ── MODAL REGISTRO ── */}
+        {showModal && (
+          <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-50 flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${registroModal.visible ? "opacity-100" : "opacity-0"}`}>
+            <div ref={registroModal.panelRef} role="dialog" aria-modal="true" aria-labelledby="registro-modal-title"
+              className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-md p-8 overflow-y-auto max-h-[90vh] transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${registroModal.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+              <div className="flex justify-between items-start mb-7">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-navy text-white flex items-center justify-center shrink-0">
+                    <User size={16} className="text-gold-400" />
+                  </div>
+                  <div>
+                    <h2 id="registro-modal-title" className="text-base font-bold text-navy">Registrar Nuevo Usuario</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Añade un ajustador forense o un cliente asegurado</p>
+                  </div>
                 </div>
+                <button onClick={() => registroModal.dismiss()} aria-label="Cerrar"
+                  className="w-8 h-8 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+                  <X size={14} />
+                </button>
               </div>
-              {viewMode === 'ajustadores' ? (
-                <>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Número de empleado</label>
-                    <input type="text" placeholder="Ej. EMP-0042" onChange={(e) => setFormData({ ...formData, numero_empleado: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Rol</label>
-                    <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all">
-                      <option>Analista</option><option>Auditor</option><option>Administrador</option>
-                    </select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Correo electrónico</label>
-                    <input type="email" placeholder="correo@ejemplo.com" onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Teléfono</label>
-                    <input type="tel" placeholder="10 dígitos" onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
-                  </div>
-                </>
-              )}
-              <div>
-                <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Contraseña</label>
-                <input type="password" placeholder="••••••••" onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => registroModal.dismiss()}
-                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 font-semibold rounded-xl text-xs transition-all text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">Cancelar</button>
-                <button type="submit"
-                  className="flex-1 py-3 bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl text-xs transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2">Guardar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL PÓLIZA ── */}
-      {showPolizaModal && selectedCliente && (
-        <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-[60] flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${polizaModal.visible ? "opacity-100" : "opacity-0"}`}>
-          <div ref={polizaModal.panelRef} role="dialog" aria-modal="true" aria-labelledby="poliza-modal-title"
-            className={`bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${polizaModal.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-            <div className="bg-navy px-7 py-6 relative overflow-hidden">
-              <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full border border-white/5" />
-              <button onClick={() => polizaModal.dismiss()} aria-label="Cerrar"
-                className="absolute top-4 right-4 w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
-                <X size={13} className="text-white/60" />
-              </button>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens Admin</p>
-              <h3 id="poliza-modal-title" className="text-xl font-bold text-white">Vincular Póliza</h3>
-            </div>
-            <div className="px-7 py-6 space-y-5">
-              <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
-                <div className="w-9 h-9 rounded-xl bg-navy text-white flex items-center justify-center font-bold text-xs shrink-0">
-                  {selectedCliente.nombre_cifrado?.[0]?.toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 leading-none mb-0.5">Cliente seleccionado</p>
-                  <p className="text-sm font-semibold text-navy truncate">{selectedCliente.nombre_cifrado}</p>
-                </div>
-              </div>
-              <form onSubmit={handleAsignarPoliza} className="space-y-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Tipo de Póliza</label>
-                  <div className="flex flex-col gap-2">
-                    {PLAN_OPTIONS.map((plan) => (
-                      <button key={plan.value} type="button" onClick={() => setPolizaData({ tipo_seguro: plan.value })}
-                        className={`flex items-center justify-between px-4 py-3 rounded-2xl border text-left transition-all
-                          ${polizaData.tipo_seguro === plan.value ? 'bg-navy border-navy' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
-                            ${polizaData.tipo_seguro === plan.value ? 'border-white bg-white' : 'border-slate-300'}`}>
-                            {polizaData.tipo_seguro === plan.value && <div className="w-2.5 h-2.5 rounded-full bg-navy" />}
-                          </div>
-                          <span className={`text-sm font-semibold ${polizaData.tipo_seguro === plan.value ? 'text-white' : 'text-navy'}`}>{plan.label}</span>
-                        </div>
-                        <ChevronRight size={14} className={polizaData.tipo_seguro === plan.value ? 'text-white/40' : 'text-slate-300'} />
-                      </button>
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Tipo de Usuario</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['ajustadores', 'clientes'] as const).map((mode) => (
+                      <label key={mode}
+                        className={`flex items-center gap-2 p-2.5 border rounded-xl cursor-pointer transition
+                          ${viewMode === mode ? 'border-navy bg-navy/5' : 'border-white/60 bg-white/40 hover:bg-white/60'}`}>
+                        <input type="radio" name="tipoUsuario" checked={viewMode === mode} onChange={() => setViewMode(mode)}
+                          className="text-navy focus:ring-navy" />
+                        <span className="text-xs font-semibold text-navy">{mode === 'ajustadores' ? 'Ajustador Forense' : 'Cliente Asegurado'}</span>
+                      </label>
                     ))}
                   </div>
                 </div>
-                <div className="flex items-start gap-3 bg-gold-50 border border-gold-100 rounded-2xl p-4">
-                  <FileText size={14} className="text-gold-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-gold-700 leading-relaxed">Al confirmar, se generará el número de póliza y se notificará al cliente.</p>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Nombre completo</label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <input type="text" value={formData.nombre} required onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+                  </div>
                 </div>
-                <button type="submit"
-                  className="w-full py-3.5 bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                  <Shield size={15} /> Confirmar Póliza
-                </button>
+                {viewMode === 'ajustadores' ? (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Número de empleado</label>
+                      <input type="text" placeholder="Ej. EMP-0042" onChange={(e) => setFormData({ ...formData, numero_empleado: e.target.value })}
+                        className="w-full px-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Rol</label>
+                      <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
+                        className="w-full px-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all">
+                        <option>Analista</option><option>Auditor</option><option>Administrador</option>
+                      </select>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Correo electrónico</label>
+                      <input type="email" placeholder="correo@ejemplo.com" onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Teléfono</label>
+                      <input type="tel" placeholder="10 dígitos" onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                        className="w-full px-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Contraseña</label>
+                  <input type="password" placeholder="••••••••" onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => registroModal.dismiss()}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 font-semibold rounded-xl text-xs transition-all text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">Cancelar</button>
+                  <button type="submit"
+                    className="flex-1 py-3 bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl text-xs transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2">Guardar Usuario</button>
+                </div>
               </form>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── SIDEBAR ── */}
-      <aside className="w-64 shrink-0 bg-navy min-h-screen flex flex-col p-7 gap-7">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 overflow-hidden">
-            <img src="/src/assets/images/Logo.png" className="w-8 h-8 object-contain" alt="ShieldLens" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white tracking-tight leading-none">ShieldLens</p>
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.18em] font-semibold mt-0.5">Administración</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-3">
-          <div className="w-9 h-9 rounded-xl bg-gold-500/20 border border-gold-400/30 text-white flex items-center justify-center font-bold text-xs shrink-0">{initials}</div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate leading-none mb-1">{userName || 'Usuario'}</p>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <p className="text-[10px] text-gold-400 font-bold uppercase tracking-wider truncate">{userRole || 'Sin Rol'}</p>
+        {/* ── MODAL PÓLIZA ── */}
+        {showPolizaModal && selectedCliente && (
+          <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-[60] flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${polizaModal.visible ? "opacity-100" : "opacity-0"}`}>
+            <div ref={polizaModal.panelRef} role="dialog" aria-modal="true" aria-labelledby="poliza-modal-title"
+              className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${polizaModal.visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+              <div className="bg-navy/90 backdrop-blur-xl px-7 py-6 relative overflow-hidden">
+                <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full border border-white/5" />
+                <button onClick={() => polizaModal.dismiss()} aria-label="Cerrar"
+                  className="absolute top-4 right-4 w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+                  <X size={13} className="text-white/60" />
+                </button>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens Admin</p>
+                <h3 id="poliza-modal-title" className="text-xl font-bold text-white">Vincular Póliza</h3>
+              </div>
+              <div className="px-7 py-6 space-y-5">
+                <div className="flex items-center gap-3 bg-white/60 border border-white/60 rounded-2xl px-4 py-3">
+                  <div className="w-9 h-9 rounded-2xl bg-navy text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    {selectedCliente.nombre_cifrado?.[0]?.toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 leading-none mb-0.5">Cliente seleccionado</p>
+                    <p className="text-sm font-semibold text-navy truncate">{selectedCliente.nombre_cifrado}</p>
+                  </div>
+                </div>
+                <form onSubmit={handleAsignarPoliza} className="space-y-5">
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-3">Tipo de Póliza</label>
+                    <div className="flex flex-col gap-2">
+                      {PLAN_OPTIONS.map((plan) => (
+                        <button key={plan.value} type="button" onClick={() => setPolizaData({ tipo_seguro: plan.value })}
+                          className={`flex items-center justify-between px-4 py-3 rounded-2xl border text-left transition-all
+                            ${polizaData.tipo_seguro === plan.value ? 'bg-navy border-navy' : 'bg-white/60 border-white/60 hover:border-slate-300'}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                              ${polizaData.tipo_seguro === plan.value ? 'border-white bg-white' : 'border-slate-300'}`}>
+                              {polizaData.tipo_seguro === plan.value && <div className="w-2.5 h-2.5 rounded-full bg-navy" />}
+                            </div>
+                            <span className={`text-sm font-semibold ${polizaData.tipo_seguro === plan.value ? 'text-white' : 'text-navy'}`}>{plan.label}</span>
+                          </div>
+                          <ChevronRight size={14} className={polizaData.tipo_seguro === plan.value ? 'text-white/40' : 'text-slate-300'} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 bg-gold-50 border border-gold-100 rounded-2xl p-4">
+                    <FileText size={14} className="text-gold-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-gold-700 leading-relaxed">Al confirmar, se generará el número de póliza y se notificará al cliente.</p>
+                  </div>
+                  <button type="submit"
+                    className="w-full py-3.5 bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                    <Shield size={15} /> Confirmar Póliza
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <nav className="flex flex-col gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/25 px-1 mb-2">Navegación</p>
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30
-                ${activeTab === id ? 'bg-white text-navy' : 'text-white/40 hover:text-white hover:bg-white/5'}`}>
-              <Icon size={14} className={activeTab === id ? 'text-gold-500' : ''} /> {label}
+        {/* ── TOP NAV ── */}
+        <header ref={topRef} className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-navy flex items-center justify-center shrink-0 shadow-sm ring-4 ring-white/30">
+              <ShieldCheck size={18} className="text-gold-400" strokeWidth={2.25} />
+            </div>
+            <div className="hidden sm:flex items-center gap-2 bg-white/70 backdrop-blur-xl px-3 py-1.5 rounded-2xl border border-white/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
+              <span className="text-sm font-semibold text-navy">ShieldLens</span>
+            </div>
+          </div>
+
+          <nav className="bg-white/70 backdrop-blur-xl p-1.5 rounded-full border border-white/60 flex items-center gap-1">
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => goToTab(id)}
+                className={`px-5 py-1.5 text-xs md:text-sm font-semibold rounded-full transition duration-150 flex items-center gap-1.5
+                  ${activeTab === id ? 'bg-navy text-white shadow-sm' : 'text-navy/50 hover:text-navy hover:bg-white/60'}`}>
+                <Icon size={13} className={activeTab === id ? 'text-gold-400' : ''} /> {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
+            <button onClick={() => setShowModal(true)}
+              className="bg-navy hover:bg-navy-dark text-white text-xs md:text-sm font-semibold px-4 py-2 rounded-2xl shadow-sm flex items-center gap-1.5 transition active:scale-95">
+              <Plus size={15} className="text-gold-400" /> Nuevo Usuario
             </button>
-          ))}
-        </nav>
-
-        <button onClick={() => navigate('/')}
-          className="mt-auto flex items-center gap-2 text-white/25 hover:text-red-400 transition-colors text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 rounded-lg">
-          <LogOut size={14} /> Salir
-        </button>
-      </aside>
-
-      {/* ── MAIN ── */}
-      <main className="flex-1 flex flex-col min-h-screen">
-        <header className="px-8 pt-8 pb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">ShieldLens Admin</p>
-          <h1 className="text-[1.75rem] font-bold tracking-tight">
-            {activeTab === 'resumen'
-              ? <>Dashboard <span className="font-light text-slate-400">General</span></>
-              : <>Gestión <span className="font-light text-slate-400">de Usuarios</span></>}
-          </h1>
+            <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-xl p-1 rounded-2xl border border-white/60">
+              <button onClick={focusSearch} aria-label="Buscar usuarios" title="Buscar usuarios"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-navy/50 hover:bg-white/70 hover:text-navy transition">
+                <Search size={15} />
+              </button>
+              <div className="w-8 h-8 rounded-xl bg-navy text-white flex items-center justify-center text-xs font-bold" title={userName || 'Administrador'}>
+                {initials}
+              </div>
+              <button onClick={() => navigate('/')} aria-label="Cerrar sesión" title="Cerrar sesión"
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-navy/50 hover:bg-red-50 hover:text-red-500 transition">
+                <LogOut size={14} />
+              </button>
+            </div>
+          </div>
         </header>
 
-        <div className="px-8 pb-10 flex flex-col gap-6 flex-1">
+        {/* ── GREETING ── */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 pt-2">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-navy tracking-tight">Buen día, {userName?.split(' ')[0] || 'Administrador'}</h1>
+            <p className="text-sm md:text-base text-navy/50 mt-0.5">Actividades y estado operativo del sistema.</p>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-navy/50">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/70 backdrop-blur-xl rounded-lg border border-white/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" /> Sesión segura
+            </span>
+            <span className="text-navy/20">|</span>
+            <span className="font-semibold text-navy/60 uppercase tracking-wide text-[11px]">{userRole || 'Administrador'}</span>
+          </div>
+        </div>
 
-          {/* ── RESUMEN ── */}
-          {activeTab === 'resumen' && (
-            <div className="flex flex-col gap-4 animate-panel-in">
+        {/* ── TOP KPI GRID ── */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard icon={Users} label="Total Usuarios" value={loading ? '—' : totalUsuarios}
+            sub={loading ? 'Cargando...' : `${ajActivos + cliActivos} activos de ${totalUsuarios}`}
+            fill={pct(ajActivos + cliActivos, totalUsuarios)} tone="navy" />
+          <KpiCard icon={UserCog} label="Ajustadores" value={loading ? '—' : ajustadores.length}
+            sub={loading ? 'Cargando...' : `${pct(ajustadores.length, totalUsuarios)}% del total`}
+            fill={pct(ajustadores.length, totalUsuarios)} tone="gold" />
+          <KpiCard icon={UserCheck} label="Clientes Asegurados" value={loading ? '—' : clientes.length}
+            sub={loading ? 'Cargando...' : `${pct(clientes.length, totalUsuarios)}% del total`}
+            fill={pct(clientes.length, totalUsuarios)} tone="emerald" />
+          <KpiCard icon={FileText} label="Registros Forenses" value={loading ? '—' : logs.length}
+            sub={loading ? 'Cargando...' : `${logs.filter(l => l.resultado === 'exito').length} exitosos`}
+            fill={pct(logs.filter(l => l.resultado === 'exito').length, logs.length || 1)} tone="blue" />
+        </section>
 
-              {/* Bento: hero (total + distribución) + tiles de tamaño variable */}
-              <div className="flex flex-col xl:flex-row gap-4 items-stretch">
+        {/* ── BENTO GRID ── */}
+        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <div className="xl:w-[38%] relative overflow-hidden bg-navy rounded-[28px] p-7 text-white flex flex-col">
-                  <div className="absolute -right-10 -top-10 w-56 h-56 rounded-full border border-white/5 pointer-events-none" />
-                  <div className="absolute -right-4  -top-4  w-32 h-32 rounded-full border border-white/5 pointer-events-none" />
-                  <div className="relative z-10">
-                    <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center mb-5">
-                      <Users size={18} className="text-gold-400" strokeWidth={2.25} />
-                    </div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-2">Total de usuarios</p>
-                    <h2 className="text-5xl font-extrabold tracking-tight tabular-nums leading-none">{totalUsuarios}</h2>
-                  </div>
-                  <div className="relative z-10 mt-7 pt-6 border-t border-white/10">
-                    <DonutChart ajustadores={ajustadores.length} clientes={clientes.length} />
-                  </div>
-                </div>
+          {/* Columna izquierda */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
 
-                <div className="flex-1 flex flex-col gap-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-                    <div className="bg-white border border-slate-200 rounded-[28px] p-6 flex flex-col justify-between gap-4 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 transition-all duration-200">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-2xl bg-gold-50 border border-gold-100 flex items-center justify-center">
-                          <UserCog size={17} className="text-gold-600" />
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{pct(ajustadores.length, totalUsuarios)}%</span>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Ajustadores</p>
-                        <p className="text-3xl font-bold text-navy tracking-tight">{ajustadores.length}</p>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-gold-400 rounded-full transition-[width] duration-500" style={{ width: `${pct(ajustadores.length, totalUsuarios)}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-[28px] p-6 flex flex-col justify-between gap-4 hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-0.5 transition-all duration-200">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-                          <UserCheck size={17} className="text-emerald-500" />
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{pct(clientes.length, totalUsuarios)}%</span>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Clientes</p>
-                        <p className="text-3xl font-bold text-navy tracking-tight">{clientes.length}</p>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-400 rounded-full transition-[width] duration-500" style={{ width: `${pct(clientes.length, totalUsuarios)}%` }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-slate-200 rounded-[28px] p-6 flex items-center justify-between gap-4 hover:shadow-lg hover:shadow-slate-200/60 transition-all duration-200">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-2xl bg-navy/5 border border-navy/10 flex items-center justify-center shrink-0">
-                        <CheckCircle size={17} className="text-navy" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Usuarios activos</p>
-                        <p className="text-3xl font-bold text-navy tracking-tight">{ajActivos + cliActivos}</p>
-                      </div>
-                    </div>
-                    <span className="hidden sm:inline text-[10px] font-bold text-slate-300 uppercase tracking-widest">{totalUsuarios - (ajActivos + cliActivos)} inactivos</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Franja de actividad — banda horizontal (reemplaza la lista vertical) */}
-              <div className="bg-navy rounded-[28px] p-7 text-white relative overflow-hidden">
-                <div className="absolute -right-10 -top-10 w-56 h-56 rounded-full border border-white/5 pointer-events-none" />
-                <div className="relative z-10 flex items-center justify-between mb-5">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens · Bitácora</p>
-                    <h2 className="text-base font-bold">Resumen de Actividad</h2>
-                  </div>
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{logs.length} registros</span>
-                </div>
-                <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    {
-                      label: 'Registros de clientes',
-                      count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('registro') || l.accion_realizada?.toLowerCase().includes('cliente')).length,
-                      dot: 'bg-white/70',
-                    },
-                    {
-                      label: 'Asignación de pólizas',
-                      count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('póliza') || l.accion_realizada?.toLowerCase().includes('poliza') || l.accion_realizada?.toLowerCase().includes('asign')).length,
-                      dot: 'bg-gold-400',
-                    },
-                    {
-                      label: 'Inicios de sesión',
-                      count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('login') || l.accion_realizada?.toLowerCase().includes('sesi') || l.accion_realizada?.toLowerCase().includes('acceso')).length,
-                      dot: 'bg-emerald-400',
-                    },
-                    {
-                      label: 'Actualización de dictamen',
-                      count: logs.filter((l: LogForense) => l.accion_realizada?.toLowerCase().includes('dictamen') || l.accion_realizada?.toLowerCase().includes('actuali') || l.accion_realizada?.toLowerCase().includes('estado')).length,
-                      dot: 'bg-slate-300',
-                    },
-                  ].map((cat, i) => (
-                    <div key={i} className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3.5 flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cat.dot}`} />
-                        <span className="text-[10px] font-semibold text-white/60 uppercase tracking-wide leading-tight">{cat.label}</span>
-                      </div>
-                      <span className="text-xl font-bold tabular-nums">{cat.count}</span>
-                    </div>
+            {/* Gestión de usuarios */}
+            <section ref={usuariosRef} className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 scroll-mt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                <div className="flex bg-slate-100 p-1 rounded-2xl items-center gap-1 border border-slate-200/60 shrink-0">
+                  {(['ajustadores', 'clientes'] as const).map((mode) => (
+                    <button key={mode} onClick={() => { setViewMode(mode); setSearch(''); }}
+                      aria-pressed={viewMode === mode}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
+                        ${viewMode === mode ? 'bg-white text-navy shadow-sm' : 'text-slate-500 hover:text-navy'}`}>
+                      {mode} <span className="opacity-50">({mode === 'ajustadores' ? ajustadores.length : clientes.length})</span>
+                    </button>
                   ))}
                 </div>
-              </div>
-
-              <RecentActivity logs={logs} />
-            </div>
-          )}
-
-          {/* ── USUARIOS ── */}
-          {activeTab === 'usuarios' && (
-            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden animate-panel-in">
-              <div className="px-7 py-5 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
-                    {(['ajustadores', 'clientes'] as const).map((mode) => (
-                      <button key={mode} onClick={() => { setViewMode(mode); setSearch(''); }}
-                        aria-pressed={viewMode === mode}
-                        className={`px-4 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
-                          ${viewMode === mode ? 'bg-white shadow-sm text-navy' : 'text-slate-400 hover:text-slate-600'}`}>
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="relative flex-1 md:w-64">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
                     <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
-                    <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre..."
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all placeholder:text-slate-300" />
+                    <input ref={searchInputRef} type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre..."
+                      className="pl-9 pr-4 py-2.5 bg-white/60 border border-white/60 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all placeholder:text-slate-400 w-56 md:w-64" />
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => exportCSV(rawList, viewMode)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-                    <Download size={13} /> Exportar CSV
-                  </button>
-                  <button onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-navy hover:bg-navy-dark text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 focus-visible:ring-offset-2">
-                    <Plus size={13} /> Nuevo {viewMode === 'ajustadores' ? 'Ajustador' : 'Cliente'}
+                  <button onClick={() => exportCSV(rawList, viewMode)} title="Exportar reporte CSV"
+                    className="p-2.5 bg-white/55 hover:bg-white/75 border border-slate-200 text-slate-600 rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+                    <Download size={15} />
                   </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table key={viewMode} className="w-full text-left animate-panel-in">
-                  <thead className="bg-slate-50/80 border-b border-slate-100">
-                    <tr>
-                      <th className="px-8 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Usuario</th>
-                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{viewMode === 'ajustadores' ? 'Rol' : 'Teléfono'}</th>
-                      {viewMode === 'clientes' &&<th className="px-7 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400">Póliza</th>}
-                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Estado</th>
-                      {viewMode === 'clientes' &&<th className="px-8 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right">Acciones</th>}
+              <div className="overflow-x-auto custom-scrollbar mt-4">
+                <table key={viewMode} className="w-full text-left border-collapse animate-panel-in">
+                  <thead>
+                    <tr className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                      <th className="pb-3 px-3">Usuario / Contacto</th>
+                      <th className="pb-3 px-3">{viewMode === 'ajustadores' ? 'Rol' : 'Tipo'}</th>
+                      {viewMode === 'clientes' && <th className="pb-3 px-3">Póliza</th>}
+                      <th className="pb-3 px-3">Estado</th>
+                      {viewMode === 'clientes' && <th className="pb-3 px-3 text-right">Acciones</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-slate-100 text-sm">
                     {loading ? (
                       Array.from({ length: 4 }).map((_, i) => (
-                        <tr key={i} className="border-b border-slate-50 last:border-0">
-                          <td className="px-8 py-4">
+                        <tr key={i}>
+                          <td className="py-3 px-3">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-slate-100 animate-pulse shrink-0" />
+                              <div className="w-9 h-9 rounded-2xl bg-slate-100 animate-pulse shrink-0" />
                               <div className="h-3 w-32 rounded-full bg-slate-100 animate-pulse" />
                             </div>
                           </td>
-                          <td className="px-4 py-4"><div className="h-3 w-16 rounded-full bg-slate-100 animate-pulse" /></td>
-                          {viewMode === 'clientes' && <td className="px-7 py-4"><div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" /></td>}
-                          <td className="px-4 py-4"><div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" /></td>
-                          {viewMode === 'clientes' && <td className="px-8 py-4 text-right"><div className="h-6 w-28 rounded-full bg-slate-100 animate-pulse ml-auto" /></td>}
+                          <td className="py-3 px-3"><div className="h-3 w-16 rounded-full bg-slate-100 animate-pulse" /></td>
+                          {viewMode === 'clientes' && <td className="py-3 px-3"><div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" /></td>}
+                          <td className="py-3 px-3"><div className="h-5 w-16 rounded-full bg-slate-100 animate-pulse" /></td>
+                          {viewMode === 'clientes' && <td className="py-3 px-3 text-right"><div className="h-6 w-28 rounded-full bg-slate-100 animate-pulse ml-auto" /></td>}
                         </tr>
                       ))
-                    ) : filtered.length === 0 ? (
+                    ) : paginatedUsers.length === 0 ? (
                       <tr><td colSpan={viewMode === 'clientes' ? 5 : 3} className="text-center py-12 text-xs text-slate-400 font-medium">{search ? `Sin resultados para "${search}"` : 'No hay registros.'}</td></tr>
                     ) : (
-                      
-                      filtered.map((item) => {
+                      paginatedUsers.map((item) => {
                         const nombre = 'nombre' in item ? item.nombre : item.nombre_cifrado;
-                        //const key    = 'id_ajustador' in item ? item.id_ajustador : item.id_cliente;
                         const isCliente = 'nombre_cifrado' in item;
+                        const contacto = isCliente ? (item as Cliente).email_cifrado : (item as Ajustador).numero_empleado;
                         return (
-                          <tr key={`${viewMode}-${'id_cliente' in item ? item.id_cliente : item.id_ajustador}`} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 active:bg-slate-100/70 transition-colors">                            <td className="px-8 py-4">
+                          <tr key={`${viewMode}-${'id_cliente' in item ? item.id_cliente : item.id_ajustador}`}
+                            className="group hover:bg-white/50 transition-colors">
+                            <td className="py-3 px-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-navy shrink-0">
+                                <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-xs shrink-0
+                                  ${isCliente ? 'bg-slate-100 border border-slate-200 text-navy' : 'bg-navy text-gold-300'}`}>
                                   {nombre?.[0]?.toUpperCase()}
                                 </div>
-                                <p className="text-sm font-semibold text-navy">{nombre}</p>
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-navy truncate">{nombre}</div>
+                                  <div className="text-xs text-slate-400 font-mono truncate">{contacto || '—'}</div>
+                                </div>
                               </div>
                             </td>
-                            <td className="px-4 py-4 text-xs font-medium text-slate-500">{'rol' in item ? item.rol : item.telefono}</td>
-                            {viewMode === 'clientes' &&(<td className="px-7 py-4">
-                            {isCliente && item && 'tipo_poliza' in item && item.tipo_poliza ? (
-                              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wide bg-gold-50 border border-gold-100 text-gold-700 px-2.5 py-1 rounded-full">
-                                {item.tipo_poliza}
-                              </span>
-                            ) : (
-                              <span className="text-xs font-medium text-slate-400">N/A</span>
+                            <td className="py-3 px-3">
+                              {isCliente ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-blue-50 text-blue-700">Cliente Asegurado</span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">{(item as Ajustador).rol}</span>
+                              )}
+                            </td>
+                            {viewMode === 'clientes' && (
+                              <td className="py-3 px-3">
+                                {item && 'tipo_poliza' in item && tienePoliza(item as Cliente) ? (
+                                  <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-gold-50 text-gold-800 border border-gold-200/60">{item.tipo_poliza}</span>
+                                ) : (
+                                  <span className="text-xs font-medium text-slate-400 italic">Pendiente asignar</span>
+                                )}
+                              </td>
                             )}
-                           </td>)}
-                            <td className="px-4 py-4">
-                              <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-3 py-1 rounded-full border
-                                ${item.is_deleted ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${item.is_deleted ? 'bg-red-400' : 'bg-emerald-400'}`} />
+                            <td className="py-3 px-3">
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full
+                                ${item.is_deleted ? 'text-red-700 bg-red-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${item.is_deleted ? 'bg-red-500' : 'bg-emerald-500'}`} />
                                 {item.is_deleted ? 'Inactivo' : 'Activo'}
                               </span>
                             </td>
-                            {viewMode === 'clientes' && <td className="px-8 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {viewMode === 'clientes' && (
-                                  <button onClick={() => { setSelectedCliente(item as Cliente); setShowPolizaModal(true); }}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-50 hover:bg-gold-500 text-gold-700 hover:text-white border border-gold-100 hover:border-transparent rounded-xl text-[10px] font-semibold transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500/50">
-                                    <Shield size={11} /> Asignar Póliza
-                                  </button>
-                                )}
-                                <button aria-label="Más opciones" className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-                                  <MoreVertical size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                            {viewMode === 'clientes' && (
+                              <td className="py-3 px-3 text-right">
+                                <button onClick={() => { setSelectedCliente(item as Cliente); setShowPolizaModal(true); }}
+                                  className="text-xs font-semibold text-slate-700 hover:text-navy hover:underline mr-2">
+                                  {tienePoliza(item as Cliente) ? 'Vincular' : 'Asignar Ahora'}
                                 </button>
-                              </div>
-                            </td>}
-                            
+                                <button aria-label="Más opciones" className="text-slate-400 hover:text-slate-600 inline-flex">
+                                  <MoreVertical size={14} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -714,18 +764,139 @@ const AdminPanel = () => {
               </div>
 
               {!loading && (
-                <div className="px-8 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400 font-medium">{filtered.length} de {rawList.length} {viewMode}</span>
-                  <span className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
-                    {rawList.filter(i => !i.is_deleted).length} activos · {rawList.filter(i => i.is_deleted).length} inactivos
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-2 border-t border-slate-100 text-xs text-slate-500">
+                  <span>
+                    Mostrando <b className="text-navy font-semibold">{paginatedUsers.length}</b> de <b className="text-navy font-semibold">{filtered.length}</b> {viewMode}
+                    {' · '}{rawList.filter(i => !i.is_deleted).length} activos
                   </span>
+                  {totalTablePages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}
+                        className="px-2.5 py-1 rounded-lg border border-white/60 bg-white/60 text-navy hover:bg-white/80 disabled:opacity-40 transition">
+                        <ChevronLeft size={13} />
+                      </button>
+                      {Array.from({ length: totalTablePages }).map((_, i) => (
+                        <button key={i} onClick={() => setTablePage(i)}
+                          className={`px-2.5 py-1 rounded-lg font-medium transition ${i === tablePage ? 'bg-navy text-white' : 'border border-white/60 bg-white/60 text-navy hover:bg-white/80'}`}>
+                          {i + 1}
+                        </button>
+                      ))}
+                      <button onClick={() => setTablePage(p => Math.min(totalTablePages - 1, p + 1))} disabled={tablePage === totalTablePages - 1}
+                        className="px-2.5 py-1 rounded-lg border border-white/60 bg-white/60 text-navy hover:bg-white/80 disabled:opacity-40 transition">
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+            </section>
+
+            {/* Distribución + actividad semanal */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex flex-col">
+                <div className="flex items-center justify-between mb-1">
+                  <div>
+                    <h4 className="text-sm font-bold text-navy flex items-center gap-2"><Users size={14} className="text-gold-600" /> Distribución de Usuarios</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Ajustadores vs. Clientes Asegurados</p>
+                  </div>
+                </div>
+                <div className="flex-1 flex items-center py-3">
+                  <DonutChart ajustadores={ajustadores.length} clientes={clientes.length} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-3 mt-1 border-t border-slate-100 text-xs">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-slate-400 font-medium">Activos</span>
+                    <span className="font-bold text-navy text-sm mt-0.5 tabular-nums">{pct(ajActivos + cliActivos, totalUsuarios)}%</span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className="text-[11px] text-slate-400 font-medium">Inactivos</span>
+                    <span className="font-bold text-navy text-sm mt-0.5 tabular-nums">{totalUsuarios - (ajActivos + cliActivos)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-navy flex items-center gap-2"><BarChart2 size={14} className="text-gold-600" /> Actividad Forense</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Registros por día de la semana</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl uppercase tracking-widest">{logs.length} eventos</span>
+                </div>
+                <div className="flex-1 flex items-end justify-between gap-2 h-36 border-b border-slate-100 pb-2">
+                  {weekActivity.map((d) => {
+                    const isMax = d.count === maxWeekCount && d.count > 0;
+                    const barPx = 10 + (d.count / maxWeekCount) * 96;
+                    return (
+                      <div key={d.label} className="flex flex-col items-center gap-1.5 flex-1" title={`${d.count} eventos`}>
+                        <div className={`w-full max-w-[26px] rounded-lg transition-all duration-300 ${isMax ? 'bg-gold-500' : 'bg-navy/15'}`} style={{ height: `${barPx}px` }} />
+                        <span className={`text-[10px] font-semibold ${isMax ? 'text-gold-600' : 'text-slate-400'}`}>{d.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between pt-3 text-xs text-slate-500">
+                  <span>Promedio diario: <b className="text-navy">{Math.round(logs.length / 7)} registros</b></span>
+                  <span className="text-slate-400 text-[11px]">{logs.length} eventos capturados</span>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+
+          {/* Columna derecha */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+
+            {/* Distribución de pólizas */}
+            <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-bold text-navy flex items-center gap-2"><Shield size={14} className="text-gold-600" /> Distribución de Pólizas</h4>
+                <span className="text-xs font-semibold text-slate-400">{clientes.length} clientes</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-white/60 border border-white/50 mb-5">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-xs uppercase font-medium text-slate-400">Pólizas asignadas</span>
+                    <div className="text-2xl font-extrabold text-navy mt-0.5 tabular-nums">{clientesConPoliza} <span className="text-sm font-normal text-slate-500">de {clientes.length}</span></div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs">{pct(clientesConPoliza, policyDenominator)}%</span>
+                </div>
+              </div>
+              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex mb-4">
+                {policyBreakdown.map(p => (
+                  <div key={p.value} className={`h-full ${POLICY_STYLES[p.value].bar}`} style={{ width: `${(p.count / policyDenominator) * 100}%` }} title={`${p.label}: ${p.count}`} />
+                ))}
+                {clientesOtraPoliza > 0 && (
+                  <div className={`h-full ${POLICY_STYLES.Otra.bar}`} style={{ width: `${(clientesOtraPoliza / policyDenominator) * 100}%` }} title={`Otra póliza: ${clientesOtraPoliza}`} />
+                )}
+                <div className="bg-slate-300 h-full" style={{ width: `${(clientesSinPoliza / policyDenominator) * 100}%` }} title={`Sin asignar: ${clientesSinPoliza}`} />
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                {policyBreakdown.map(p => (
+                  <div key={p.value} className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${POLICY_STYLES[p.value].dot}`} />
+                    <span className="text-slate-600 truncate">{p.value} <b className="text-navy">({p.count})</b></span>
+                  </div>
+                ))}
+                {clientesOtraPoliza > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${POLICY_STYLES.Otra.dot}`} />
+                    <span className="text-slate-600 truncate">Otra póliza <b className="text-navy">({clientesOtraPoliza})</b></span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0" />
+                  <span className="text-slate-600 truncate">Sin asignar <b className="text-navy">({clientesSinPoliza})</b></span>
+                </div>
+              </div>
+            </section>
+
+            {/* Auditoría en tiempo real */}
+            <RecentActivity logs={logs} />
+          </div>
+        </main>
+      </div>
     </div>
+    </PageBackground>
   );
 };
 

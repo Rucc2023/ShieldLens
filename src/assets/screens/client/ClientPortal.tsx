@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, ShieldCheck, Zap, FileText, LogOut, 
+import PageBackground from '../../components/PageBackground';
+import {
+  Plus, ShieldCheck, Zap, FileText, LogOut,
   Clock, ChevronRight, ChevronLeft, Loader2,
   HelpCircle, ChevronDown, 
 } from 'lucide-react';
@@ -83,7 +84,8 @@ const ClientPortal = () => {
   const paginated  = claims.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans text-navy">
+    <PageBackground>
+    <div className="min-h-screen font-sans text-navy">
       <main className="max-w-7xl mx-auto flex flex-col min-h-screen">
 
         {/* ── HEADER ── */}
@@ -115,7 +117,7 @@ const ClientPortal = () => {
             <button
               onClick={() => setShowUserMenu(v => !v)}
               aria-haspopup="menu" aria-expanded={showUserMenu}
-              className="flex items-center gap-3 bg-white border border-slate-200 pl-4 pr-3 py-2.5 rounded-2xl hover:border-slate-300 transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
+              className="flex items-center gap-3 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] pl-4 pr-3 py-2.5 rounded-2xl hover:border-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
             >
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-semibold text-navy">{perfil?.nombre || 'Ricardo Cruz'}</p>
@@ -128,7 +130,7 @@ const ClientPortal = () => {
             </button>
 
             {showUserMenu && (
-              <div role="menu" className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div role="menu" className="absolute right-0 mt-2 w-48 bg-white/85 backdrop-blur-xl border border-white/70 rounded-2xl shadow-xl z-50 overflow-hidden">
                 <div className="px-4 py-2.5 border-b border-slate-100">
                   <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Cuenta de asegurado</p>
                 </div>
@@ -148,7 +150,7 @@ const ClientPortal = () => {
           <div className="lg:col-span-9 flex flex-col gap-6">
 
             {/* HERO */}
-            <div className="relative overflow-hidden bg-navy rounded-3xl p-9 text-white">
+            <div className="relative overflow-hidden bg-navy/90 backdrop-blur-xl rounded-3xl p-9 text-white">
               <div className="absolute -right-10 -top-10 w-64 h-64 rounded-full border border-white/5" />
               <div className="absolute -right-4  -top-4  w-44 h-44 rounded-full border border-white/5" />
               <div className="relative z-10 flex items-start justify-between">
@@ -173,13 +175,13 @@ const ClientPortal = () => {
             </div>
 
             {/* CLAIMS — paginated 4 per page */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-7">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-7">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-sm font-bold flex items-center gap-2 text-navy">
                   <Clock size={15} className="text-gold-600" />
                   Actividad Reciente
                 </h3>
-                <span className="text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full uppercase tracking-widest">
+                <span className="text-[10px] font-semibold text-slate-400 bg-white/55 border border-white/50 px-3 py-1 rounded-full uppercase tracking-widest">
                   {loading ? '...' : `${claims.length} registros`}
                 </span>
               </div>
@@ -210,7 +212,7 @@ const ClientPortal = () => {
                         className="flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] flex items-center justify-center shrink-0">
                             <FileText size={16} className="text-navy/50" />
                           </div>
                           <div>
@@ -292,11 +294,11 @@ const ClientPortal = () => {
           <div className="lg:col-span-3 flex flex-col gap-6">
 
             {/* PÓLIZA */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6">
               <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4">
                 <Zap size={12} className="text-gold-600" /> Póliza Vigente
               </h3>
-              <div className="bg-navy rounded-2xl p-5 relative overflow-hidden">
+              <div className="bg-navy/90 backdrop-blur-xl rounded-2xl p-5 relative overflow-hidden">
                 <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full border border-white/5 pointer-events-none" />
                 <div className="relative z-10 space-y-3">
                   <div className="flex flex-col gap-0.5">
@@ -321,7 +323,7 @@ const ClientPortal = () => {
             </div>
 
             {/* FAQ */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6">
               <h3 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4">
                 <HelpCircle size={12} className="text-gold-600" /> Preguntas Frecuentes
               </h3>
@@ -337,7 +339,7 @@ const ClientPortal = () => {
                         aria-expanded={isOpen}
                         aria-controls={`faq-panel-${i}`}
                         className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 focus-visible:ring-inset
-                          ${isOpen ? 'bg-navy text-white' : 'bg-slate-50 hover:bg-slate-100 text-navy'}`}
+                          ${isOpen ? 'bg-navy text-white' : 'bg-white/55 hover:bg-white/75 text-navy'}`}
                       >
                         <span className="text-[11px] font-semibold leading-snug">{faq.q}</span>
                         <ChevronDown size={12} className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-white/50' : 'text-slate-400'}`} />
@@ -358,6 +360,7 @@ const ClientPortal = () => {
         </div>
       </main>
     </div>
+    </PageBackground>
   );
 };
 

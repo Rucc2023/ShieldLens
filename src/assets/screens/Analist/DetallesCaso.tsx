@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import RadialGauge from "../../components/RadialGauge";
 import { useDismissableModal } from "../../components/useDismissableModal";
+import PageBackground from "../../components/PageBackground";
 import {
   ArrowLeft, AlertTriangle, CheckCircle2, XCircle,
   User, FileText, Calendar, MapPin, Loader2,
@@ -28,8 +29,8 @@ const ConfirmModal = ({ title, message, confirmLabel, confirmClass, icon, onConf
   return (
     <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-50 flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${visible ? "opacity-100" : "opacity-0"}`}>
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title"
-        className={`bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-        <div className="bg-navy px-7 py-6 relative overflow-hidden">
+        className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+        <div className="bg-navy/90 backdrop-blur-xl px-7 py-6 relative overflow-hidden">
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full border border-white/5" />
           <button onClick={() => dismiss()} aria-label="Cerrar" className="absolute top-4 right-4 w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
             <X size={13} className="text-white/60" />
@@ -38,7 +39,7 @@ const ConfirmModal = ({ title, message, confirmLabel, confirmClass, icon, onConf
           <h3 id="confirm-modal-title" className="text-xl font-bold text-white">{title}</h3>
         </div>
         <div className="px-7 py-6 space-y-5">
-          <div className="flex items-start gap-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+          <div className="flex items-start gap-3 bg-white/55 border border-white/50 rounded-2xl p-4">
             <div className="shrink-0 mt-0.5">{icon}</div>
             <p className="text-sm text-slate-600 leading-relaxed font-medium">{message}</p>
           </div>
@@ -71,7 +72,7 @@ const ResultModal = ({ success, message, onClose }: ResultModalProps) => {
   return (
     <div className={`fixed inset-0 bg-black/25 backdrop-blur-sm z-50 flex items-center justify-center p-6 transition-opacity duration-200 ease-out ${visible ? "opacity-100" : "opacity-0"}`}>
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="result-modal-title"
-        className={`bg-white border border-slate-200 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+        className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
         <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto
           ${success ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
           {success
@@ -172,16 +173,20 @@ export default function DetalleCasoForense() {
 
   /* ── Loading ── */
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-app-bg gap-4" style={{ fontFamily: FONT }}>
+    <PageBackground>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ fontFamily: FONT }}>
       <Loader2 size={28} className="animate-spin text-gold-500" />
       <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Sincronizando ShieldBD...</p>
     </div>
+    </PageBackground>
   );
 
   if (!caso) return (
-    <div className="min-h-screen flex items-center justify-center bg-app-bg" style={{ fontFamily: FONT }}>
+    <PageBackground>
+    <div className="min-h-screen flex items-center justify-center" style={{ fontFamily: FONT }}>
       <p className="text-sm font-medium text-slate-400">Expediente no localizado.</p>
     </div>
+    </PageBackground>
   );
 
   const riskScore  = Math.round((1 - (caso.score_confianza_ia || 0)) * 100);
@@ -197,7 +202,8 @@ export default function DetalleCasoForense() {
   const confirmConfig = confirmKey ? DECISION_CONFIG[confirmKey] : null;
 
   return (
-    <div className="min-h-screen bg-app-bg text-navy" style={{ fontFamily: FONT }}>
+    <PageBackground>
+    <div className="min-h-screen text-navy" style={{ fontFamily: FONT }}>
 
       {/* ── CONFIRM MODAL ── */}
       {confirmConfig && (
@@ -222,7 +228,7 @@ export default function DetalleCasoForense() {
         {/* ── HEADER ── */}
         <div>
           <button onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-gold-300 hover:text-gold-600 text-slate-500 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all mb-6 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+            className="inline-flex items-center gap-2 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] hover:border-gold-300 hover:text-gold-600 text-slate-500 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all mb-6 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
             <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
             Volver al Panel
           </button>
@@ -256,8 +262,8 @@ export default function DetalleCasoForense() {
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-center whitespace-nowrap">{caso.estado_reclamacion}</span>
-                <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-center whitespace-nowrap">{caso.estado_gestion}</span>
+                <span className="text-[10px] font-bold text-slate-500 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] px-3 py-1.5 rounded-xl text-center whitespace-nowrap">{caso.estado_reclamacion}</span>
+                <span className="text-[10px] font-bold text-slate-500 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] px-3 py-1.5 rounded-xl text-center whitespace-nowrap">{caso.estado_gestion}</span>
               </div>
             </div>
           </div>
@@ -281,7 +287,7 @@ export default function DetalleCasoForense() {
         {/* ── VISTA GENERAL ── */}
         {activeTab === "vista-general" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-panel-in">
-            <div className="bg-white border border-slate-200 rounded-[28px] p-7">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
                 <User size={13} className="text-gold-600" /> Perfil del Asegurado
               </h3>
@@ -303,7 +309,7 @@ export default function DetalleCasoForense() {
               </div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-[28px] p-7">
+            <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
                 <FileText size={13} className="text-gold-600" /> Bitácora del Siniestro
               </h3>
@@ -312,8 +318,8 @@ export default function DetalleCasoForense() {
                   { icon: Calendar, label: "Fecha del incidente", value: new Date(caso.fecha_reclamacion).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }) },
                   { icon: MapPin,   label: "Lugar reportado",     value: caso.lugar_incidente || "Ubicación ShieldBD" },
                 ].map(({ icon: Icon, label, value }, i) => (
-                  <div key={i} className="flex items-center gap-4 px-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
-                    <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                  <div key={i} className="flex items-center gap-4 px-4 py-3.5 bg-white/55 border border-white/50 rounded-2xl">
+                    <div className="w-9 h-9 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] flex items-center justify-center shrink-0">
                       <Icon size={15} className="text-slate-400" />
                     </div>
                     <div>
@@ -322,7 +328,7 @@ export default function DetalleCasoForense() {
                     </div>
                   </div>
                 ))}
-                <div className="px-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                <div className="px-4 py-4 bg-white/55 border border-white/50 rounded-2xl">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Descripción del siniestro</p>
                   <p className="text-xs text-slate-500 leading-relaxed italic">"{caso.descripcion_siniestro}"</p>
                 </div>
@@ -344,7 +350,7 @@ export default function DetalleCasoForense() {
                   ))}
                 </div>
               )}
-              <div className="bg-white border border-slate-200 rounded-[28px] p-7 relative overflow-hidden">
+              <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7 relative overflow-hidden">
                 <div className="absolute -top-8 -right-8 opacity-[0.03] pointer-events-none"><BrainCircuit size={160} /></div>
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5">
                   <MessageSquareQuote size={13} className="text-gold-600" /> Justificación Técnica del Modelo
@@ -360,7 +366,7 @@ export default function DetalleCasoForense() {
             </div>
 
             <div className="flex flex-col gap-4">
-              <div className="bg-navy rounded-[28px] p-7 text-white sticky top-6 space-y-6">
+              <div className="bg-navy/90 backdrop-blur-xl rounded-[28px] p-7 text-white sticky top-6 space-y-6">
                 <div className="flex items-center gap-2">
                   <Fingerprint size={18} className="text-gold-400" />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">AutoML Analysis</p>
@@ -387,7 +393,7 @@ export default function DetalleCasoForense() {
         )}
 
         {/* ── PANEL DE RESOLUCIÓN ── */}
-        <div className="bg-white border border-slate-200 rounded-[28px] p-8 relative overflow-hidden">
+        <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-8 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none"><Scale size={120} /></div>
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-6">
@@ -416,5 +422,6 @@ export default function DetalleCasoForense() {
 
       </div>
     </div>
+    </PageBackground>
   );
 }

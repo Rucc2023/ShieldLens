@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RadialGauge from '../../components/RadialGauge';
+import PageBackground from '../../components/PageBackground';
 import {
   ArrowLeft, ArrowRight, CheckCircle2,
   ShieldCheck, Upload, X,
@@ -103,7 +104,7 @@ const Field = ({ icon: Icon, children }: { icon: React.ElementType; children: Re
   </div>
 );
 
-const inputCls = "w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-navy placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-navy/10 focus:border-navy/30 transition-all";
+const inputCls = "w-full pl-10 pr-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm text-navy placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-navy/10 focus:border-navy/30 transition-all";
 
 /* ─── Step 0: Details ── */
 const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: ClaimData) => void; onNext: () => void }) => {
@@ -128,7 +129,7 @@ const StepDetails = ({ data, setData, onNext }: { data: ClaimData; setData: (d: 
               aria-pressed={data.type === id}
               onClick={() => setData({ ...data, type: id })}
               className={`text-left p-4 rounded-2xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
-                ${data.type === id ? 'bg-navy border-navy' : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-white'}`}
+                ${data.type === id ? 'bg-navy border-navy' : 'bg-white/60 border-white/60 hover:border-slate-300 hover:bg-white'}`}
             >
               <Icon size={16} className={`mb-2 ${data.type === id ? 'text-white/60' : 'text-slate-400'}`} />
               <p className={`text-xs font-bold leading-tight ${data.type === id ? 'text-white' : 'text-navy'}`}>{label}</p>
@@ -192,7 +193,7 @@ const StepPhotos = ({ files, setFiles, onNext, onBack }: { files: File[]; setFil
       <p className="text-sm text-slate-400 mt-1">Sube la fotografía principal del daño para el análisis forense.</p>
     </div>
 
-    <label className="relative block border-2 border-dashed border-slate-200 hover:border-navy/30 bg-slate-50 hover:bg-slate-100/60 rounded-2xl p-12 text-center cursor-pointer transition-all group has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-navy/40">
+    <label className="relative block border-2 border-dashed border-slate-200 hover:border-navy/30 bg-white/55 hover:bg-white/75/60 rounded-2xl p-12 text-center cursor-pointer transition-all group has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-navy/40">
       <div className="w-12 h-12 rounded-2xl bg-slate-200 group-hover:bg-navy/10 flex items-center justify-center mx-auto mb-3 transition-colors">
         <Upload size={20} className="text-slate-400 group-hover:text-navy transition-colors" />
       </div>
@@ -337,7 +338,7 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
 
       {phase === 2 && result && (
         <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3">
+          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-2xl p-6 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Score de confianza</span>
               <div className="flex items-center gap-3">
@@ -354,7 +355,7 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
           </div>
 
           {result.justificacion && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+            <div className="bg-white/60 border border-white/60 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-lg bg-navy flex items-center justify-center shrink-0">
                   <Sparkles size={13} className="text-white" />
@@ -409,7 +410,7 @@ const StepConfirm = ({ data, navigate }: { data: ClaimData; navigate: (p: string
         </div>
       </div>
 
-      <div className="bg-navy rounded-3xl p-7 text-left space-y-3">
+      <div className="bg-navy/90 backdrop-blur-xl rounded-3xl p-7 text-left space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-white/30">Folio de seguimiento</span>
           <span className="text-sm font-bold text-white font-mono">{folio}</span>
@@ -458,7 +459,8 @@ const NewClaim = () => {
   const [data,  setData]  = useState<ClaimData>({ type: '', date: '', location: '', description: '', policy: '' });
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans p-6 lg:p-10">
+    <PageBackground>
+    <div className="min-h-screen font-sans p-6 lg:p-10">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => step === 0 ? navigate('/portal') : setStep(s => s - 1)}
@@ -468,7 +470,7 @@ const NewClaim = () => {
           {step === 0 ? 'Volver al Portal' : 'Paso anterior'}
         </button>
 
-        <div className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-10">
+        <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-8 sm:p-10">
           <StepBar current={step} />
           <div key={step} className="animate-panel-in">
             {step === 0 && <StepDetails data={data} setData={setData} onNext={() => setStep(1)} />}
@@ -479,6 +481,7 @@ const NewClaim = () => {
         </div>
       </div>
     </div>
+    </PageBackground>
   );
 };
 
