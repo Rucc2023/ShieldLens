@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BarChart as ReBarChart, Bar, XAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, ResponsiveContainer } from 'recharts';
+import RadialGauge from '../../components/RadialGauge';
 import {
   LogOut, ChevronDown, ChevronRight, ChevronLeft,
   Loader2, Activity, User, BarChart3, CheckCircle2,
@@ -29,7 +31,7 @@ const confPct = (raw: number) => (raw <= 1 ? raw * 100 : raw);
 type Tone = 'navy' | 'amber' | 'emerald' | 'blue' | 'red';
 
 const TONES: Record<Tone, { bg: string; icon: string }> = {
-  navy:    { bg: 'bg-[#0B1E3D]/[0.06]', icon: 'text-[#0B1E3D]' },
+  navy:    { bg: 'bg-navy/[0.06]', icon: 'text-navy' },
   amber:   { bg: 'bg-amber-50',         icon: 'text-amber-500' },
   emerald: { bg: 'bg-emerald-50',       icon: 'text-emerald-500' },
   blue:    { bg: 'bg-blue-50',          icon: 'text-blue-500' },
@@ -45,74 +47,62 @@ const KpiCard = ({ icon: Icon, label, value, tone, sub }: { icon: any; label: st
       </div>
       <div>
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-extrabold text-[#0B1E3D] tracking-tight tabular-nums">{value}</p>
+        <p className="text-2xl font-extrabold text-navy tracking-tight tabular-nums">{value}</p>
         {sub && <p className="text-[10px] text-slate-400 font-semibold mt-1">{sub}</p>}
       </div>
     </div>
   );
 };
 
-/* ─── Ring chart (resolution rate) ── */
-const RingChart = ({ value, size = 64, stroke = 6, color = '#FB923C' }: { value: number; size?: number; stroke?: number; color?: string }) => {
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const offset = c - (Math.min(Math.max(value, 0), 100) / 100) * c;
+/* ─── Bar chart (Reales vs Sospechosos) ── */
+const CASOS_COLORS = { Reales: '#34d399', Sospechosos: '#f87171' };
+
+const CasosTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
+  if (!active || !payload?.length) return null;
+  const { name, value } = payload[0];
   return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} stroke="#ffffff" strokeOpacity={0.12} strokeWidth={stroke} fill="none" />
-      <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none"
-        strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 600ms ease' }} />
-    </svg>
+    <div className="bg-navy-dark border border-white/10 rounded-xl px-3 py-2 shadow-xl">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">{name}</p>
+      <p className="text-sm font-bold text-white tabular-nums">{value}</p>
+    </div>
   );
 };
 
-/* ─── Bar chart SVG ── */
-const BarChart = ({ reales, sospechosos }: { reales: number; sospechosos: number }) => {
-  const total  = reales + sospechosos;
-  const maxVal = Math.max(reales, sospechosos, 1);
-  const W = 280; const H = 130;
-  const barW = 52; const gap = 40;
-  const baseY = H - 24; const maxH = H - 42;
-  const rH = Math.round((reales      / maxVal) * maxH);
-  const sH = Math.round((sospechosos / maxVal) * maxH);
-  const rX = W / 2 - barW - gap / 2;
-  const sX = W / 2 + gap / 2;
+const BarChartCasos = ({ reales, sospechosos }: { reales: number; sospechosos: number }) => {
+  const total = reales + sospechosos;
+  const data  = [
+    { name: 'Reales',      value: reales },
+    { name: 'Sospechosos', value: sospechosos },
+  ];
   const pctR = pct(reales, total);
   const pctS = pct(sospechosos, total);
 
   return (
     <div className="flex flex-col gap-5">
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="mx-auto overflow-visible w-full max-w-[280px]">
-        {[0.25, 0.5, 0.75, 1].map((f, i) => {
-          const y = baseY - Math.round(f * maxH);
-          return (
-            <g key={i}>
-              <line x1={0} y1={y} x2={W} y2={y} stroke="#f1f5f9" strokeWidth={1} />
-              <text x={0} y={y - 3} fill="#cbd5e1" fontSize="8" fontWeight={600} textAnchor="start">{Math.round(f * maxVal)}</text>
-            </g>
-          );
-        })}
-        <line x1={0} y1={baseY} x2={W} y2={baseY} stroke="#e2e8f0" strokeWidth={1} />
-        <rect x={rX} y={baseY - rH} width={barW} height={Math.max(rH, 2)} rx={12} fill="#34d399" />
-        {reales > 0 && <text x={rX + barW / 2} y={baseY - rH - 8} textAnchor="middle" fill="#10b981" fontSize="13" fontWeight="800">{reales}</text>}
-        <text x={rX + barW / 2} y={baseY + 16} textAnchor="middle" fill="#94a3b8" fontSize="9" fontWeight="700">Reales</text>
-        <rect x={sX} y={baseY - sH} width={barW} height={Math.max(sH, 2)} rx={12} fill="#f87171" />
-        {sospechosos > 0 && <text x={sX + barW / 2} y={baseY - sH - 8} textAnchor="middle" fill="#ef4444" fontSize="13" fontWeight="800">{sospechosos}</text>}
-        <text x={sX + barW / 2} y={baseY + 16} textAnchor="middle" fill="#94a3b8" fontSize="9" fontWeight="700">Sospechosos</text>
-      </svg>
+      <div className="h-40 w-full" role="img" aria-label={`${reales} casos reales (${pctR}%), ${sospechosos} casos sospechosos (${pctS}%)`}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ReBarChart data={data} margin={{ top: 24, right: 8, left: 8, bottom: 0 }} barCategoryGap="40%">
+            <CartesianGrid vertical={false} stroke="#f1f5f9" />
+            <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: '#e2e8f0' }} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+            <RechartsTooltip content={<CasosTooltip />} cursor={{ fill: 'rgba(15,23,42,0.03)' }} />
+            <Bar dataKey="value" radius={[12, 12, 0, 0]} maxBarSize={64} animationDuration={600} animationEasing="ease-out">
+              {data.map((entry) => <Cell key={entry.name} fill={CASOS_COLORS[entry.name as keyof typeof CASOS_COLORS]} />)}
+            </Bar>
+          </ReBarChart>
+        </ResponsiveContainer>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Reales</p>
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Reales</p>
             <p className="text-lg font-extrabold text-emerald-700 leading-none tabular-nums">{reales} <span className="text-[10px] font-semibold text-emerald-500">{pctR}%</span></p>
           </div>
         </div>
         <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
           <span className="w-2.5 h-2.5 rounded-full bg-red-400 shrink-0" />
           <div>
-            <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest">Sospechosos</p>
+            <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Sospechosos</p>
             <p className="text-lg font-extrabold text-red-600 leading-none tabular-nums">{sospechosos} <span className="text-[10px] font-semibold text-red-400">{pctS}%</span></p>
           </div>
         </div>
@@ -150,17 +140,19 @@ const CaseRow = ({ item, navigate, dim = false }: { item: CaseRecord; navigate: 
   return (
     <div
       onClick={() => navigate(`/analyst/case-details/${item.id_reclamacion}`)}
-      className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all cursor-pointer group
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/analyst/case-details/${item.id_reclamacion}`); } }}
+      role="button" tabIndex={0}
+      className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all cursor-pointer group active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
         ${dim ? 'bg-white/50 border-slate-100 hover:bg-white hover:border-slate-200' : 'bg-slate-50 border-slate-100 hover:bg-white hover:border-slate-200 hover:shadow-sm'}`}
     >
       <div className="flex items-center gap-4 min-w-0">
         <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
-          <User size={16} className="text-[#0B1E3D]/40" />
+          <User size={16} className="text-navy/40" />
         </div>
         <div className="min-w-0">
-          <h4 className="text-sm font-bold text-[#0B1E3D] tracking-tight truncate">{item.nombre_cliente}</h4>
+          <h4 className="text-sm font-bold text-navy tracking-tight truncate">{item.nombre_cliente}</h4>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-orange-500 font-bold uppercase tracking-wide">{item.tipo_siniestro}</span>
+            <span className="text-[10px] text-gold-600 font-bold uppercase tracking-wide">{item.tipo_siniestro}</span>
             <span className="text-slate-300">·</span>
             <span className="text-[10px] text-slate-400 font-medium">
               {new Date(item.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
@@ -172,13 +164,13 @@ const CaseRow = ({ item, navigate, dim = false }: { item: CaseRecord; navigate: 
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <div className="text-right flex flex-col items-end gap-1">
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border
             ${suspicious ? 'bg-red-50 text-red-500 border-red-100' : 'bg-emerald-50 text-emerald-500 border-emerald-100'}`}>
             {item.veredicto_ia}
           </span>
-          <span className="text-[9px] text-slate-400 font-mono">{item.id_reclamacion.substring(0, 8)}</span>
+          <span className="text-[10px] text-slate-400 font-mono">{item.id_reclamacion.substring(0, 8)}</span>
         </div>
-        <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:bg-[#0B1E3D] group-hover:border-[#0B1E3D] transition-all">
+        <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center group-hover:bg-navy group-hover:border-navy transition-all">
           <ChevronRight size={14} className="text-slate-400 group-hover:text-white" />
         </div>
       </div>
@@ -191,18 +183,18 @@ const Pagination = ({ current, total, setPage }: { current: number; total: numbe
   <div className="flex items-center justify-between mt-5 pt-5 border-t border-slate-100">
     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pág. {current + 1} / {total}</span>
     <div className="flex items-center gap-2">
-      <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={current === 0}
-        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors">
+      <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={current === 0} aria-label="Página anterior"
+        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
         <ChevronLeft size={14} className="text-slate-600" />
       </button>
       <div className="flex items-center gap-1.5">
         {Array.from({ length: total }).map((_, i) => (
-          <button key={i} onClick={() => setPage(() => i)}
-            className={`rounded-full transition-all ${i === current ? 'w-5 h-2 bg-orange-500' : 'w-2 h-2 bg-slate-200 hover:bg-slate-300'}`} />
+          <button key={i} onClick={() => setPage(() => i)} aria-label={`Ir a la página ${i + 1}`} aria-current={i === current}
+            className={`rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 ${i === current ? 'w-5 h-2 bg-navy' : 'w-2 h-2 bg-slate-200 hover:bg-slate-300'}`} />
         ))}
       </div>
-      <button onClick={() => setPage(p => Math.min(total - 1, p + 1))} disabled={current === total - 1}
-        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors">
+      <button onClick={() => setPage(p => Math.min(total - 1, p + 1))} disabled={current === total - 1} aria-label="Página siguiente"
+        className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
         <ChevronRight size={14} className="text-slate-600" />
       </button>
     </div>
@@ -225,17 +217,6 @@ const ForensicPanel = () => {
   const [searchTerm,     setSearchTerm]     = useState('');
   const [onlySuspicious, setOnlySuspicious] = useState(false);
 
-  // Load the display typeface once (see index.html note for a faster alternative).
-  useEffect(() => {
-    if (!document.getElementById('font-inter')) {
-      const link = document.createElement('link');
-      link.id = 'font-inter';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   const fetchCases = async () => {
     setLoading(true);
     try {
@@ -256,8 +237,13 @@ const ForensicPanel = () => {
     const handleOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -314,21 +300,21 @@ const ForensicPanel = () => {
   const activePaginated    = activeList.slice(activeCurrentPage * PAGE_SIZE, activeCurrentPage * PAGE_SIZE + PAGE_SIZE);
 
   const tabClass = (active: boolean) =>
-    `px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 ${active ? 'bg-white text-[#0B1E3D] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`;
+    `px-4 py-2 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 ${active ? 'bg-white text-navy shadow-sm' : 'text-slate-400 hover:text-slate-600'}`;
 
   return (
-    <div className="flex min-h-screen bg-[#F6F6F8] text-[#0B1E3D]" style={{ fontFamily: FONT }}>
+    <div className="flex min-h-screen bg-app-bg text-navy" style={{ fontFamily: FONT }}>
       <main className="flex-1 flex flex-col min-h-screen">
 
         {/* TOP NAV */}
         <nav className="px-8 py-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#0B1E3D] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-navy flex items-center justify-center shrink-0">
               <ShieldCheck size={18} className="text-white" strokeWidth={2.25} />
             </div>
             <div>
               <p className="text-sm font-extrabold tracking-tight leading-none">Forense</p>
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400 mt-1">Módulo Analista</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mt-1">Módulo Analista</p>
             </div>
           </div>
 
@@ -340,13 +326,15 @@ const ForensicPanel = () => {
 
             <button
               onClick={fetchCases}
-              className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-orange-300 hover:text-orange-500 text-slate-400 flex items-center justify-center transition-colors"
+              aria-label="Actualizar datos"
+              className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-gold-300 hover:text-gold-600 text-slate-400 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
               title="Actualizar datos"
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </button>
 
-            <button className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-400 flex items-center justify-center transition-colors relative">
+            <button aria-label={casosSospechosos > 0 ? `Notificaciones: ${casosSospechosos} casos sospechosos` : 'Notificaciones'}
+              className="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-400 flex items-center justify-center transition-colors relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
               <Bell size={15} />
               {!loading && casosSospechosos > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
@@ -356,26 +344,26 @@ const ForensicPanel = () => {
             </button>
 
             <div className="relative" ref={menuRef}>
-              <button onClick={() => setMenuOpen(v => !v)}
-                className="flex items-center gap-3 bg-white border border-slate-200 pl-3.5 pr-2.5 py-2 rounded-2xl hover:border-slate-300 transition-all">
+              <button onClick={() => setMenuOpen(v => !v)} aria-haspopup="menu" aria-expanded={menuOpen}
+                className="flex items-center gap-3 bg-white border border-slate-200 pl-3.5 pr-2.5 py-2 rounded-2xl hover:border-slate-300 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold text-[#0B1E3D] leading-none">Analista Senior</p>
-                  <p className="text-[9px] text-orange-500 font-bold uppercase tracking-widest mt-1">Sesión Activa</p>
+                  <p className="text-xs font-bold text-navy leading-none">Analista Senior</p>
+                  <p className="text-[10px] text-gold-600 font-bold uppercase tracking-widest mt-1">Sesión Activa</p>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-[#0B1E3D] text-white flex items-center justify-center text-xs font-bold">AS</div>
+                <div className="w-8 h-8 rounded-xl bg-navy text-white flex items-center justify-center text-xs font-bold">AS</div>
                 <ChevronDown size={13} className={`text-slate-300 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
-              {menuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-slate-100">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Cuenta del analista</p>
-                  </div>
-                  <button onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors">
-                    <LogOut size={13} /> Cerrar sesión
-                  </button>
+              <div role="menu"
+                className={`absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden origin-top-right transition-[transform,opacity] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100
+                  ${menuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                <div className="px-4 py-2.5 border-b border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cuenta del analista</p>
                 </div>
-              )}
+                <button onClick={handleLogout} role="menuitem"
+                  className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-bold text-red-500 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40 focus-visible:ring-inset">
+                  <LogOut size={13} /> Cerrar sesión
+                </button>
+              </div>
             </div>
           </div>
         </nav>
@@ -400,14 +388,14 @@ const ForensicPanel = () => {
           <div className="xl:col-span-7 flex flex-col gap-5">
 
             {/* Hero */}
-            <div className="relative overflow-hidden bg-[#0B1E3D] rounded-[28px] p-8 sm:p-9 text-white flex flex-col justify-between min-h-[300px]">
+            <div className="relative overflow-hidden bg-navy rounded-[28px] p-8 sm:p-9 text-white flex flex-col justify-between min-h-[300px]">
               <div className="absolute -right-16 -top-16 w-72 h-72 rounded-full border border-white/[0.06]" />
               <div className="absolute -right-6  -top-6  w-48 h-48 rounded-full border border-white/[0.06]" />
 
               <div className="relative z-10 flex items-start justify-between gap-4">
                 <div>
                   <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center mb-5">
-                    <LayoutGrid size={18} className="text-orange-400" strokeWidth={2.25} />
+                    <LayoutGrid size={18} className="text-gold-400" strokeWidth={2.25} />
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-2">Total de casos</p>
                   <h2 className="text-5xl font-extrabold tracking-tight tabular-nums leading-none mb-3">
@@ -422,25 +410,22 @@ const ForensicPanel = () => {
                   </p>
                 </div>
 
-                <div className="relative w-16 h-16 shrink-0">
-                  <RingChart value={loading ? 0 : resolutionRate} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xs font-extrabold tabular-nums">{loading ? '—' : `${resolutionRate}%`}</span>
-                  </div>
-                </div>
+                <RadialGauge value={loading ? 0 : resolutionRate} size={64} label={`Tasa de resolución: ${resolutionRate}%`}>
+                  <span className="text-xs font-extrabold text-white tabular-nums">{loading ? '—' : `${resolutionRate}%`}</span>
+                </RadialGauge>
               </div>
 
               <div className="relative z-10 flex flex-wrap items-center gap-2.5 mt-8">
                 <button onClick={() => goToList('pendientes')}
-                  className="inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+                  className="inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                   Ver pendientes <ArrowUpRight size={13} />
                 </button>
                 <button onClick={() => goToList('historial')}
-                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                   Ver historial
                 </button>
                 <button onClick={exportCSV}
-                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors sm:ml-auto">
+                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:ml-auto">
                   <Download size={13} /> Exportar CSV
                 </button>
               </div>
@@ -462,7 +447,7 @@ const ForensicPanel = () => {
                   <Loader2 size={18} className="animate-spin text-slate-300" />
                 </div>
               ) : (
-                <BarChart reales={casosReales} sospechosos={casosSospechosos} />
+                <BarChartCasos reales={casosReales} sospechosos={casosSospechosos} />
               )}
             </div>
           </div>
@@ -478,23 +463,23 @@ const ForensicPanel = () => {
               <KpiCard icon={Gauge} label="Confianza IA" value={loading ? '—' : `${avgConfidence}%`} tone="blue"
                 sub={loading ? undefined : `Basado en ${cases.length} casos`} />
 
-              <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 to-red-500 rounded-3xl p-5 flex flex-col justify-between text-white">
+              <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-red-500 rounded-3xl p-5 flex flex-col justify-between text-white">
                 <AlertTriangle size={72} className="absolute -right-4 -bottom-4 text-white/10" strokeWidth={1.5} />
                 <div className="relative z-10">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-1">Riesgo de fraude</p>
                   <p className="text-2xl font-extrabold tabular-nums">{loading ? '—' : casosSospechosos}</p>
                 </div>
                 <button onClick={() => goToList('pendientes', true)}
-                  className="relative z-10 mt-4 inline-flex items-center gap-1 self-start bg-white/15 hover:bg-white/25 text-[10px] font-bold px-3 py-1.5 rounded-full transition-colors">
+                  className="relative z-10 mt-4 inline-flex items-center gap-1 self-start bg-white/15 hover:bg-white/25 text-[10px] font-bold px-3 py-1.5 rounded-full transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
                   Revisar <ArrowUpRight size={11} />
                 </button>
               </div>
             </div>
 
             {/* Estado de gestión */}
-            <div className="bg-[#0B1E3D] rounded-[28px] p-7 text-white flex-1 flex flex-col">
+            <div className="bg-navy rounded-[28px] p-7 text-white flex-1 flex flex-col">
               <h3 className="text-sm font-bold mb-6 flex items-center gap-2 tracking-tight">
-                <BarChart3 size={14} className="text-orange-400" /> Estado de Gestión
+                <BarChart3 size={14} className="text-gold-400" /> Estado de Gestión
               </h3>
               {loading ? (
                 <div className="flex items-center justify-center flex-1">
@@ -516,20 +501,20 @@ const ForensicPanel = () => {
           <div className="bg-white border border-slate-200 rounded-[28px] p-7">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div className="flex items-center gap-3">
-                <Activity size={15} className="text-orange-500 hidden sm:block" />
-                <div className="inline-flex items-center bg-slate-100 rounded-2xl p-1">
-                  <button onClick={() => setActiveTab('pendientes')} className={tabClass(activeTab === 'pendientes')}>
+                <Activity size={15} className="text-gold-600 hidden sm:block" />
+                <div className="inline-flex items-center bg-slate-100 rounded-2xl p-1" role="tablist">
+                  <button role="tab" aria-selected={activeTab === 'pendientes'} onClick={() => setActiveTab('pendientes')} className={tabClass(activeTab === 'pendientes')}>
                     Pendientes <span className="opacity-50">({casosPendientes.length})</span>
                   </button>
-                  <button onClick={() => setActiveTab('historial')} className={tabClass(activeTab === 'historial')}>
+                  <button role="tab" aria-selected={activeTab === 'historial'} onClick={() => setActiveTab('historial')} className={tabClass(activeTab === 'historial')}>
                     Historial <span className="opacity-50">({casosFinalizados.length})</span>
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center gap-2.5">
-                <button onClick={() => setOnlySuspicious(v => !v)}
-                  className={`text-[10px] font-bold uppercase tracking-widest px-3 py-2.5 rounded-xl border transition-colors ${onlySuspicious ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
+                <button onClick={() => setOnlySuspicious(v => !v)} aria-pressed={onlySuspicious}
+                  className={`text-[10px] font-bold uppercase tracking-widest px-3 py-2.5 rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 ${onlySuspicious ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}>
                   Solo sospechosos
                 </button>
                 <div className="relative">
@@ -538,7 +523,8 @@ const ForensicPanel = () => {
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     placeholder="Buscar cliente o tipo..."
-                    className="pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 w-full sm:w-52 transition-all"
+                    aria-label="Buscar por cliente o tipo de siniestro"
+                    className="pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-600 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-navy/10 focus:border-navy/30 w-full sm:w-52 transition-all"
                   />
                 </div>
               </div>
@@ -547,7 +533,7 @@ const ForensicPanel = () => {
             <div className="flex flex-col gap-2.5 min-h-[260px]">
               {loading ? (
                 <div className="flex flex-col items-center justify-center flex-1 py-16 gap-3">
-                  <Loader2 size={22} className="animate-spin text-orange-400" />
+                  <Loader2 size={22} className="animate-spin text-gold-500" />
                   <p className="text-[11px] text-slate-400 font-semibold">Cargando casos...</p>
                 </div>
               ) : activeList.length === 0 ? (

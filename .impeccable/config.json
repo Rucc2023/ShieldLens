@@ -1,0 +1,23 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/assets/screens/Analist/Forense.tsx"
+        ],
+        "createdAt": "2026-09-03T08:20:39.313Z",
+        "reason": "false positive: text-slate-400 and bg-red-50 belong to mutually exclusive ternary branches (unselected/white vs selected/red), never rendered together"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-09-03T17:01:52.920Z",
+        "reason": "Inter is the app's pre-existing typeface, already loaded (imperfectly, via duplicated useEffects) across all 6 screens before this redesign; consolidating it into index.html preserves the established brand choice rather than introducing a new generic default"
+      }
+    ]
+  }
+}
