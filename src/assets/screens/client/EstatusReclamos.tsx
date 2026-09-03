@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageBackground from '../../components/PageBackground';
-import {
-  ArrowLeft, CheckCircle2, Clock, ShieldCheck, 
-  CircleDollarSign, Info, Loader2, AlertCircle,
-} from 'lucide-react';
+
+const JAKARTA = "font-['Plus_Jakarta_Sans']";
 
 interface FullClaim {
   id_reclamacion: string;
@@ -15,16 +13,17 @@ interface FullClaim {
   veredicto_ia: string;
   score_confianza_ia: number;
   descripcion_siniestro: string;
+  lugar_incidente?: string;
 }
 
 const buildSteps = (estado: string) => {
   const s        = estado?.toUpperCase();
   const resolved = ['REVISADO', 'APROBADO', 'ACEPTADO', 'RECHAZADO', 'FRAUDE'].includes(s);
   return [
-    { label: 'Recibido',    done: true,     active: false },
-    { label: 'Análisis IA', done: true,     active: false },
-    { label: 'En Revisión', done: resolved, active: !resolved },
-    { label: 'Resolución',  done: resolved, active: resolved  },
+    { label: 'Recibido',    icon: 'check',    done: true,     active: false },
+    { label: 'Análisis IA', icon: 'check',    done: true,     active: false },
+    { label: 'En Revisión', icon: 'schedule', done: resolved, active: !resolved },
+    { label: 'Resolución',  icon: 'verified', done: resolved, active: resolved  },
   ];
 };
 
@@ -32,16 +31,21 @@ const ClaimStatus = () => {
   const navigate = useNavigate();
   const { id }   = useParams();
   const [claim,   setClaim]   = useState<FullClaim | null>(null);
+  const [perfil,  setPerfil]  = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [shared,  setShared]  = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
+      const headers = { 'x-auth-token': localStorage.getItem('token') || '' };
       try {
-        const res = await fetch(`http://localhost:5000/api/incidentes/detalle/${id}`, {
-          headers: { 'x-auth-token': localStorage.getItem('token') || '' },
-        });
-        const json = await res.json();
-        if (json.success) setClaim(json.data);
+        const [resC, resP] = await Promise.all([
+          fetch(`http://localhost:5000/api/incidentes/detalle/${id}`, { headers }),
+          fetch('http://localhost:5000/api/incidentes/perfil-cliente', { headers }),
+        ]);
+        const [jsonC, jsonP] = await Promise.all([resC.json(), resP.json()]);
+        if (jsonC.success) setClaim(jsonC.data);
+        if (jsonP.success) setPerfil(jsonP.data);
       } catch { /* null state handles it */ }
       finally { setLoading(false); }
     };
@@ -51,211 +55,318 @@ const ClaimStatus = () => {
   if (loading) return (
     <PageBackground>
     <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <Loader2 size={26} className="animate-spin text-gold-500" />
-      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Cargando expediente...</p>
+      <span className="material-symbols-outlined text-[32px] text-gold-500 animate-spin">progress_activity</span>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-navy/50">Cargando expediente...</p>
     </div>
     </PageBackground>
   );
 
   if (!claim) return (
     <PageBackground>
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-sm text-slate-400 font-medium">No se encontró el reporte.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+      <span className="material-symbols-outlined text-[32px] text-navy/30">search_off</span>
+      <p className="text-sm text-navy/50 font-medium">No se encontró el reporte.</p>
     </div>
     </PageBackground>
   );
 
-  const steps         = buildSteps(claim.estado_reclamacion);
-  const iaScorePct    = Math.round((claim.score_confianza_ia ?? 0) * 100);
-  const isFraude      = claim.veredicto_ia === 'SOSPECHOSO';
-  const completedCount = steps.filter(s => s.done).length;
+  const steps           = buildSteps(claim.estado_reclamacion);
+  const iaScorePct       = Math.round((claim.score_confianza_ia ?? 0) * 100);
+  const isFraude         = claim.veredicto_ia === 'SOSPECHOSO';
+  const completedCount   = steps.filter(s => s.done).length;
+  const gaugeCircumference = 251.2;
+  const gaugeOffset      = gaugeCircumference * (1 - Math.min(100, Math.max(0, iaScorePct)) / 100);
 
   const statusStyle = (() => {
     const s = claim.estado_reclamacion?.toUpperCase();
-    if (s === 'PENDIENTE')                                    return { bg: 'bg-amber-50',   text: 'text-amber-600',   dot: 'bg-amber-400',   pulse: true  };
-    if (['ACEPTADO', 'APROBADO', 'REVISADO'].includes(s))    return { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-400', pulse: false };
-    if (['RECHAZADO', 'FRAUDE'].includes(s))                  return { bg: 'bg-red-50',     text: 'text-red-600',     dot: 'bg-red-400',     pulse: false };
-    return                                                           { bg: 'bg-gold-50',    text: 'text-gold-700',    dot: 'bg-gold-400',    pulse: false };
+    if (s === 'PENDIENTE')                                 return { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-500', pulse: true  };
+    if (['ACEPTADO', 'APROBADO', 'REVISADO'].includes(s)) return { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', pulse: false };
+    if (['RECHAZADO', 'FRAUDE'].includes(s))               return { bg: 'bg-red-50',     text: 'text-red-700',     dot: 'bg-red-500',   pulse: false };
+    return                                                        { bg: 'bg-gold-50',    text: 'text-gold-700',    dot: 'bg-gold-400',  pulse: false };
   })();
+
+  const handleDownload = () => {
+    const lines = [
+      `ShieldLens — Resumen de Expediente`,
+      `Folio: ${claim.id_reclamacion}`,
+      `Tipo de siniestro: ${claim.tipo_siniestro}`,
+      `Fecha: ${new Date(claim.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      `Estado: ${claim.estado_reclamacion}`,
+      `Monto reclamado: $${claim.monto_reclamado.toLocaleString('es-MX')} MXN`,
+      `Veredicto IA: ${claim.veredicto_ia} (${iaScorePct}% de confianza)`,
+      claim.lugar_incidente ? `Lugar: ${claim.lugar_incidente}` : '',
+      `Descripción: ${claim.descripcion_siniestro}`,
+    ].filter(Boolean);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `expediente_${claim.id_reclamacion.substring(0, 8)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Folio ${claim.id_reclamacion.substring(0, 8)}`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch { /* usuario canceló el share */ }
+  };
 
   return (
     <PageBackground>
-    <div className="min-h-screen font-sans text-navy">
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 py-8 space-y-6">
+    <div className="min-h-screen font-sans text-navy" style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6">
 
-        {/* BACK */}
-        <button
-          onClick={() => navigate('/portal')}
-          className="flex items-center gap-2 text-slate-400 hover:text-navy transition-colors text-sm font-medium group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 rounded-lg"
-        >
-          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
-          Volver al Portal
-        </button>
+        {/* ── TOP ACTION ROW ── */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            onClick={() => navigate('/portal')}
+            className="inline-flex items-center gap-1.5 text-navy/70 hover:text-navy transition-colors text-sm font-semibold group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 rounded-lg"
+          >
+            <span className="material-symbols-outlined text-[20px] transition-transform group-hover:-translate-x-1">arrow_back</span>
+            Volver al Portal
+          </button>
 
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 bg-navy text-white text-[10px] font-semibold uppercase tracking-widest rounded-lg">
-                Expediente Digital
-              </span>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
-                {claim.tipo_siniestro} · {new Date(claim.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight font-mono">{claim.id_reclamacion.substring(0, 13)}</h1>
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-white/70 backdrop-blur-xl border border-white/60 text-navy/60 text-xs font-semibold">
+              Expediente Digital
+            </span>
+            <button onClick={handleDownload} title="Descargar resumen del expediente"
+              className="p-2 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] text-navy/60 hover:text-navy hover:bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+              <span className="material-symbols-outlined text-[18px]">download</span>
+            </button>
+            <button onClick={handleShare} title="Compartir folio"
+              className="p-2 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] text-navy/60 hover:text-navy hover:bg-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
+              <span className="material-symbols-outlined text-[18px]">{shared ? 'check' : 'share'}</span>
+            </button>
           </div>
-
-          <span className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border ${statusStyle.bg} ${statusStyle.text}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} ${statusStyle.pulse ? 'animate-pulse' : ''}`} />
-            {claim.estado_reclamacion}
-          </span>
         </div>
 
+        {/* ── HEADER MODULE CARD ── */}
+        <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-navy/5 text-navy/70 text-xs font-semibold">
+                <span className="material-symbols-outlined text-[14px]">folder_shared</span>
+                Expediente Digital
+              </span>
+              <span className="text-slate-300 text-xs">·</span>
+              <span className="text-xs font-medium text-slate-500">
+                {claim.tipo_siniestro} · {new Date(claim.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <h1 className={`${JAKARTA} text-2xl sm:text-3xl font-bold text-navy tracking-tight font-mono`}>
+                {claim.id_reclamacion.substring(0, 13).toUpperCase()}
+              </h1>
+              {perfil?.id_poliza && (
+                <span className="text-xs text-slate-400 font-medium">Póliza vigente: {perfil.id_poliza.substring(0, 12).toUpperCase()}</span>
+              )}
+            </div>
+          </div>
+
+          <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full shrink-0 ${statusStyle.bg} ${statusStyle.text}`}>
+            <span className="relative flex h-2 w-2">
+              {statusStyle.pulse && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${statusStyle.dot}`} />}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${statusStyle.dot}`} />
+            </span>
+            <span className="text-xs font-bold uppercase tracking-widest">{claim.estado_reclamacion}</span>
+          </span>
+        </section>
+
         {/* ── TIMELINE ── */}
-        <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl px-8 pt-7 pb-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-sm font-bold text-navy">Progreso de la Reclamación</h3>
-            <span className="text-[10px] font-semibold text-slate-400 bg-white/55 border border-white/50 px-3 py-1 rounded-full uppercase tracking-widest">
-              {completedCount} de {steps.length} pasos
+        <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 sm:p-7 flex flex-col gap-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-navy/5 flex items-center justify-center text-navy shrink-0">
+                <span className="material-symbols-outlined text-[20px]">linear_scale</span>
+              </div>
+              <div className="flex flex-col">
+                <h2 className={`${JAKARTA} text-base font-bold text-navy`}>Progreso de la Reclamación</h2>
+                <span className="text-xs text-slate-400">Flujo automatizado de validación pericial</span>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-white/60 border border-white/50 text-navy/70 text-xs font-semibold">
+              {completedCount} de {steps.length} pasos completados
             </span>
           </div>
 
-          {/* Row: [node]──[connector]──[node]──[connector]──[node] */}
-          <div className="flex items-start">
-            {steps.map((step, i) => (
-              <div key={i} className={`flex items-start ${i < steps.length - 1 ? 'flex-1' : ''}`}>
+          <div className="relative pt-1 pb-1">
+            <div className="hidden md:block absolute top-[26px] left-[12%] right-[12%] h-1 bg-slate-100 rounded-full" />
+            <div className="hidden md:block absolute top-[26px] left-[12%] h-1 bg-emerald-300 rounded-full transition-all duration-700"
+              style={{ width: `${(completedCount / steps.length) * 76}%` }} />
 
-                {/* Node + label */}
-                <div className="flex flex-col items-center">
-                  <div aria-current={step.active ? 'step' : undefined} className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-500 shrink-0
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-10">
+              {steps.map((step, i) => (
+                <div key={i} className="flex md:flex-col items-center gap-3 md:gap-2 text-left md:text-center">
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-all duration-500
                     ${step.done && step.active
-                      ? 'bg-navy text-white ring-4 ring-navy/10'
+                      ? 'bg-navy text-white shadow-lg ring-4 ring-navy/10'
                       : step.done
-                        ? 'bg-emerald-400 text-white'
-                        : 'bg-slate-100 text-slate-300 border border-slate-200'}`}
-                  >
-                    {step.done ? <CheckCircle2 size={16} /> : <Clock size={15} />}
+                        ? 'bg-emerald-400 text-white shadow-sm'
+                        : 'bg-white/60 border border-white/50 text-slate-300'}`}>
+                    <span className="material-symbols-outlined text-[20px]">{step.icon}</span>
                   </div>
+                  <div className="flex flex-col">
+                    <span className={`text-sm font-semibold ${step.done && step.active ? 'text-navy' : step.done ? 'text-navy' : 'text-slate-400'}`}>
+                      {i + 1}. {step.label}
+                    </span>
+                    {step.active && step.done && <span className="text-[10px] font-semibold text-gold-600 uppercase tracking-widest mt-0.5">En curso activo</span>}
+                    {step.active && !step.done && <span className="text-[10px] font-semibold text-amber-500 uppercase tracking-widest mt-0.5">En curso</span>}
+                    {step.done && step.label === 'Resolución' && !step.active && <span className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mt-0.5">Finalizado</span>}
+                    {!step.done && step.label !== 'En Revisión' && <span className="text-[10px] font-semibold text-slate-300 uppercase tracking-widest mt-0.5">Pendiente</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-                  <p className={`text-[11px] font-semibold mt-2.5 whitespace-nowrap text-center
-                    ${step.done ? 'text-navy' : 'text-slate-300'}`}>
-                    {step.label}
-                  </p>
+        {/* ── INFO GRID ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
 
-                  {/* Sub-label */}
-                  {step.active && step.done && (
-                    <span className="text-[10px] font-semibold text-gold-600 uppercase tracking-widest mt-0.5">Actual</span>
-                  )}
-                  {step.active && !step.done && (
-                    <span className="text-[10px] font-semibold text-amber-500 uppercase tracking-widest mt-0.5">En curso</span>
-                  )}
-                  {step.done && step.label === 'Resolución' && !step.active && (
-                    <span className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest mt-0.5">Finalizado</span>
-                  )}
+          {/* VEREDICTO IA */}
+          <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 sm:p-7 flex flex-col justify-between gap-5">
+            <div>
+              <div className="flex items-center gap-2.5 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-navy/5 flex items-center justify-center text-navy shrink-0">
+                  <span className="material-symbols-outlined text-[20px]">shield_person</span>
+                </div>
+                <div>
+                  <h3 className={`${JAKARTA} text-base font-bold text-navy`}>Veredicto IA ShieldLens</h3>
+                  <span className="text-xs text-slate-400">Vertex AI + Gemini Flash</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center justify-center py-2">
+                <div className="relative w-56 h-32 flex items-end justify-center overflow-hidden">
+                  <svg className="w-56 h-32" viewBox="0 0 200 110">
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#f1f5f9" strokeLinecap="round" strokeWidth="18" />
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={isFraude ? '#f87171' : '#34d399'}
+                      strokeDasharray={gaugeCircumference} strokeDashoffset={gaugeOffset} strokeLinecap="round" strokeWidth="18"
+                      style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
+                  </svg>
+                  <div className="absolute bottom-1 flex flex-col items-center">
+                    <span className={`${JAKARTA} text-4xl text-navy leading-none font-bold`}>{iaScorePct}%</span>
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Nivel de Confianza</span>
+                  </div>
                 </div>
 
-                {/* Connector */}
-                {i < steps.length - 1 && (
-                  <div className="flex-1 px-2 mt-4.5">
-                    <div className="h-0.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-400 rounded-full transition-all duration-700"
-                        style={{
-                          width: step.done && steps[i + 1].done ? '100%'
-                               : step.done                       ? '50%'
-                               :                                   '0%',
-                        }}
-                      />
-                    </div>
+                {isFraude ? (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="text-xs font-semibold">Anomalía Detectada · Revisión Requerida</span>
+                  </div>
+                ) : (
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-semibold">Índice Óptimo · Coherencia Alta</span>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* INFO GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* IA INSIGHTS */}
-          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-7 space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gold-50 border border-gold-100 flex items-center justify-center shrink-0">
-                <ShieldCheck size={17} className="text-gold-600" />
-              </div>
-              <h3 className="text-sm font-bold">Veredicto IA ShieldLens</h3>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Nivel de confianza</span>
-                <span className="text-lg font-bold text-navy">{iaScorePct}%</span>
+            <div className={`rounded-xl p-4 flex flex-col gap-2 border ${isFraude ? 'bg-red-50/60 border-red-100' : 'bg-white/50 border-white/50'}`}>
+              <div className={`flex items-center gap-2 ${isFraude ? 'text-red-600' : 'text-emerald-700'}`}>
+                <span className="material-symbols-outlined text-[20px]">{isFraude ? 'warning' : 'verified'}</span>
+                <span className="text-sm font-bold">{isFraude ? 'Anomalías detectadas' : 'Sin anomalías detectadas'}</span>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-1000 ${isFraude ? 'bg-red-400' : 'bg-emerald-400'}`}
-                  style={{ width: `${iaScorePct}%` }}
-                />
-              </div>
-            </div>
-
-            <div className={`flex items-start gap-3 p-4 rounded-2xl border
-              ${isFraude ? 'bg-red-50 border-red-100' : 'bg-emerald-50 border-emerald-100'}`}>
-              {isFraude
-                ? <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
-                : <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />}
-              <p className={`text-[11px] font-semibold leading-relaxed ${isFraude ? 'text-red-600' : 'text-emerald-600'}`}>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 {isFraude
-                  ? 'Se detectaron anomalías en la evidencia. El caso requiere revisión humana.'
-                  : 'Análisis completado. No se detectaron patrones de fraude.'}
+                  ? 'Se detectaron patrones inconsistentes en la evidencia. El caso fue escalado para revisión humana.'
+                  : 'Análisis completado. No se detectaron patrones de fraude ni discrepancias en la evidencia fotográfica.'}
               </p>
-            </div>
-          </div>
-
-          {/* FINANCIALS */}
-          <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-7 flex flex-col gap-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
-                <CircleDollarSign size={17} className="text-emerald-500" />
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+                <span>Veredicto: {claim.veredicto_ia}</span>
+                <span className="font-mono text-navy/60">Folio: {claim.id_reclamacion.substring(0, 8).toUpperCase()}</span>
               </div>
-              <h3 className="text-sm font-bold">Monto de Reclamación</h3>
             </div>
+          </section>
 
+          {/* MONTO DE RECLAMACIÓN */}
+          <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 sm:p-7 flex flex-col justify-between gap-5">
             <div>
-              <p className="text-3xl font-bold tracking-tight">
-                ${claim.monto_reclamado.toLocaleString('es-MX')}
-                <span className="text-base font-medium text-slate-400 ml-1">MXN</span>
-              </p>
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-1">
-                Estimación sujeta a deducible
-              </p>
+              <div className="flex items-center gap-2.5 pb-4">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600">
+                  <span className="material-symbols-outlined text-[20px]">monetization_on</span>
+                </div>
+                <div>
+                  <h3 className={`${JAKARTA} text-base font-bold text-navy`}>Monto de Reclamación</h3>
+                  <span className="text-xs text-slate-400">Cálculo de valuación inicial</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Monto Estimado Solicitado</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`${JAKARTA} text-4xl text-navy tracking-tight font-extrabold`}>${claim.monto_reclamado.toLocaleString('es-MX')}</span>
+                  <span className="text-base font-semibold text-slate-400">MXN</span>
+                </div>
+                <span className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                  <span className="material-symbols-outlined text-[15px] text-slate-400">info</span>
+                  Estimación sujeta a deducible contratado
+                </span>
+              </div>
+
+              {perfil && (
+                <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-navy to-navy-dark text-white shadow-[0_10px_30px_-12px_rgba(11,30,61,0.35)] flex items-center justify-between">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] text-white/50 uppercase tracking-widest truncate">{perfil.tipo_poliza || perfil.plan || 'Cobertura Vigente'}</span>
+                    <span className="font-mono font-bold tracking-widest mt-1">•••• {perfil.id_poliza ? perfil.id_poliza.slice(-4) : '----'}</span>
+                    <span className="text-[11px] text-white/60 mt-1">Límite máximo: ${(perfil.monto_cobertura || 50000).toLocaleString('es-MX')} MXN</span>
+                  </div>
+                  <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-white text-[24px]">contactless</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="bg-white/55 border border-white/50 rounded-2xl p-4 flex-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Descripción declarada</p>
-              <p className="text-[11px] text-slate-600 italic leading-relaxed">"{claim.descripcion_siniestro}"</p>
+            <div className="rounded-xl p-4 bg-white/50 border border-white/50 flex flex-col gap-2 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Declaración de Siniestro</span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {new Date(claim.fecha_reclamacion).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </span>
+              </div>
+              <p className="text-sm text-slate-700 italic leading-relaxed">"{claim.descripcion_siniestro}"</p>
+              {claim.lugar_incidente && (
+                <div className="flex items-center gap-1.5 pt-1 text-navy/70 text-xs font-medium">
+                  <span className="material-symbols-outlined text-[16px]">location_on</span>
+                  {claim.lugar_incidente}
+                </div>
+              )}
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* HELP FOOTER */}
-        <div className="bg-navy/90 backdrop-blur-xl rounded-3xl p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
+        {/* ── SUPPORT FOOTER ── */}
+        <section className="bg-navy/90 backdrop-blur-xl rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 relative overflow-hidden">
           <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full border border-white/5 pointer-events-none" />
           <div className="absolute -right-3 -top-3 w-20 h-20 rounded-full border border-white/5 pointer-events-none" />
           <div className="relative z-10 flex items-center gap-4">
-            <div className="w-10 h-10 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center shrink-0">
-              <Info size={16} className="text-gold-400" />
+            <div className="w-11 h-11 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-gold-400 text-[22px]">support_agent</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">¿Tienes dudas sobre este folio?</p>
-              <p className="text-[11px] text-white/40 mt-0.5">Contacta a un asesor legal ShieldLens.</p>
+              <p className={`${JAKARTA} text-sm font-bold text-white`}>¿Tienes dudas sobre este folio?</p>
+              <p className="text-xs text-white/40 mt-0.5">Contacta a un asesor legal ShieldLens.</p>
             </div>
           </div>
-          <button className="relative z-10 shrink-0 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+          <button className="relative z-10 shrink-0 inline-flex items-center gap-1.5 bg-gold-500 hover:bg-gold-600 text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+            <span className="material-symbols-outlined text-[16px]">chat</span>
             Hablar con soporte
           </button>
-        </div>
+        </section>
 
       </div>
     </div>

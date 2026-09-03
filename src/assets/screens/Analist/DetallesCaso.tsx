@@ -3,14 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import RadialGauge from "../../components/RadialGauge";
 import { useDismissableModal } from "../../components/useDismissableModal";
 import PageBackground from "../../components/PageBackground";
-import {
-  ArrowLeft, AlertTriangle, CheckCircle2, XCircle,
-  User, FileText, Calendar, MapPin, Loader2,
-  Fingerprint, Scale, BrainCircuit, MessageSquareQuote,
-  ShieldCheck, ShieldAlert, X,
-} from "lucide-react";
 
+const JAKARTA = "font-['Plus_Jakarta_Sans']";
 const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";
+
+/* ─── Icon helper (Material Symbols Outlined, misma familia que ClientPortal.tsx / EstatusReclamos.tsx) ── */
+const Icon = ({ name, className = '', size = 16 }: { name: string; className?: string; size?: number }) => (
+  <span className={`material-symbols-outlined ${className}`} style={{ fontSize: size }}>{name}</span>
+);
 
 /* ─── Confirm modal ── */
 interface ConfirmModalProps {
@@ -33,10 +33,10 @@ const ConfirmModal = ({ title, message, confirmLabel, confirmClass, icon, onConf
         <div className="bg-navy/90 backdrop-blur-xl px-7 py-6 relative overflow-hidden">
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full border border-white/5" />
           <button onClick={() => dismiss()} aria-label="Cerrar" className="absolute top-4 right-4 w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
-            <X size={13} className="text-white/60" />
+            <Icon name="close" size={15} className="text-white/60" />
           </button>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens · Dictamen</p>
-          <h3 id="confirm-modal-title" className="text-xl font-bold text-white">{title}</h3>
+          <h3 id="confirm-modal-title" className={`${JAKARTA} text-xl font-bold text-white`}>{title}</h3>
         </div>
         <div className="px-7 py-6 space-y-5">
           <div className="flex items-start gap-3 bg-white/55 border border-white/50 rounded-2xl p-4">
@@ -75,12 +75,10 @@ const ResultModal = ({ success, message, onClose }: ResultModalProps) => {
         className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
         <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto
           ${success ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
-          {success
-            ? <CheckCircle2 size={30} className="text-emerald-400" />
-            : <XCircle     size={30} className="text-red-400" />}
+          <Icon name={success ? 'check_circle' : 'cancel'} size={30} className={success ? 'text-emerald-400' : 'text-red-400'} />
         </div>
         <div>
-          <h3 id="result-modal-title" className="text-lg font-bold text-navy">{success ? '¡Dictamen aplicado!' : 'Error al procesar'}</h3>
+          <h3 id="result-modal-title" className={`${JAKARTA} text-lg font-bold text-navy`}>{success ? '¡Dictamen aplicado!' : 'Error al procesar'}</h3>
           <p className="text-sm text-slate-400 mt-1 leading-relaxed">{message}</p>
         </div>
         <button onClick={() => dismiss()}
@@ -101,21 +99,21 @@ const DECISION_CONFIG: Record<string, {
     message: 'Al confirmar, el caso será marcado como aprobado. Esta acción quedará registrada en la bitácora.',
     confirmLabel: 'Sí, aprobar',
     confirmClass: 'bg-emerald-500 hover:bg-emerald-600',
-    icon: <CheckCircle2 size={18} className="text-emerald-500" />,
+    icon: <Icon name="check_circle" size={19} className="text-emerald-500" />,
   },
   fraude: {
     title: 'Confirmar Fraude',
     message: 'Al confirmar, el caso será marcado como fraude detectado. Se generará un reporte y se suspenderá la póliza del asegurado.',
     confirmLabel: 'Sí, confirmar fraude',
     confirmClass: 'bg-red-500 hover:bg-red-600',
-    icon: <AlertTriangle size={18} className="text-red-500" />,
+    icon: <Icon name="warning" size={19} className="text-red-500" />,
   },
   escalar: {
     title: 'Escalar Caso',
     message: 'El caso será enviado a revisión por un experto. Recibirás una notificación cuando se emita el dictamen final.',
     confirmLabel: 'Sí, escalar',
     confirmClass: 'bg-amber-400 hover:bg-amber-500',
-    icon: <AlertTriangle size={18} className="text-amber-500" />,
+    icon: <Icon name="warning" size={19} className="text-amber-500" />,
   },
 };
 
@@ -175,7 +173,7 @@ export default function DetalleCasoForense() {
   if (loading) return (
     <PageBackground>
     <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ fontFamily: FONT }}>
-      <Loader2 size={28} className="animate-spin text-gold-500" />
+      <Icon name="progress_activity" size={30} className="animate-spin text-gold-500" />
       <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-slate-400">Sincronizando ShieldBD...</p>
     </div>
     </PageBackground>
@@ -195,8 +193,8 @@ export default function DetalleCasoForense() {
   const automlPct  = ((firstEvid?.resultado_automl_score ?? 0) * 100);
 
   const TABS = [
-    { id: "vista-general",        label: "Vista General",        icon: User },
-    { id: "análisis-de-imágenes", label: "Análisis de Imágenes", icon: BrainCircuit },
+    { id: "vista-general",        label: "Vista General",        icon: "person" },
+    { id: "análisis-de-imágenes", label: "Análisis de Imágenes", icon: "psychology" },
   ];
 
   const confirmConfig = confirmKey ? DECISION_CONFIG[confirmKey] : null;
@@ -229,14 +227,14 @@ export default function DetalleCasoForense() {
         <div>
           <button onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] hover:border-gold-300 hover:text-gold-600 text-slate-500 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all mb-6 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-            <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+            <Icon name="arrow_back" size={15} className="group-hover:-translate-x-0.5 transition-transform" />
             Volver al Panel
           </button>
 
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-5">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-1.5">Expediente Forense</p>
-              <h1 className="text-[1.7rem] font-extrabold tracking-tight text-navy font-mono">
+              <h1 className={`${JAKARTA} text-[1.7rem] font-extrabold tracking-tight text-navy font-mono`}>
                 {caso.id_reclamacion?.substring(0, 18)}
               </h1>
               <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -252,13 +250,11 @@ export default function DetalleCasoForense() {
             <div className="flex items-center gap-3">
               <div className={`flex items-center gap-3 pl-3 pr-5 py-3 rounded-2xl text-white ${isHighRisk ? 'bg-red-500' : 'bg-amber-400'}`}>
                 <RadialGauge value={riskScore} size={44} thickness={4} color="#ffffff" trackColor="rgba(255,255,255,0.25)" label={`Riesgo IA: ${riskScore}%`}>
-                  {isHighRisk
-                    ? <ShieldAlert size={16} className="text-white" strokeWidth={2.25} />
-                    : <ShieldCheck size={16} className="text-white" strokeWidth={2.25} />}
+                  <Icon name={isHighRisk ? 'gpp_maybe' : 'verified_user'} size={18} className="text-white" />
                 </RadialGauge>
                 <div>
                   <span className="block text-[10px] font-bold uppercase tracking-widest opacity-80">Riesgo IA</span>
-                  <span className="block text-2xl font-extrabold leading-tight tabular-nums">{riskScore}%</span>
+                  <span className={`${JAKARTA} block text-2xl font-extrabold leading-tight tabular-nums`}>{riskScore}%</span>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -271,17 +267,14 @@ export default function DetalleCasoForense() {
 
         {/* ── TABS ── */}
         <div className="flex gap-1.5 bg-slate-100 p-1.5 rounded-2xl w-fit" role="tablist">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
-                  ${activeTab === tab.id ? "bg-navy text-white shadow-sm" : "text-slate-400 hover:text-navy hover:bg-white"}`}>
-                <Icon size={13} className={activeTab === tab.id ? "text-gold-400" : "text-slate-300"} />
-                {tab.label}
-              </button>
-            );
-          })}
+          {TABS.map((tab) => (
+            <button key={tab.id} role="tab" aria-selected={activeTab === tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30
+                ${activeTab === tab.id ? "bg-navy text-white shadow-sm" : "text-slate-400 hover:text-navy hover:bg-white"}`}>
+              <Icon name={tab.icon} size={16} className={activeTab === tab.id ? "text-gold-400" : "text-slate-300"} />
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* ── VISTA GENERAL ── */}
@@ -289,7 +282,7 @@ export default function DetalleCasoForense() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-panel-in">
             <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                <User size={13} className="text-gold-600" /> Perfil del Asegurado
+                <Icon name="person" size={16} className="text-gold-600" /> Perfil del Asegurado
               </h3>
               <div className="grid grid-cols-2 gap-x-6 gap-y-5">
                 {[
@@ -304,23 +297,23 @@ export default function DetalleCasoForense() {
                 ))}
                 <div className="col-span-2 pt-5 border-t border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monto de la Reclamación</p>
-                  <p className="text-3xl font-extrabold text-emerald-500 tabular-nums">${caso.monto_reclamado?.toLocaleString()} <span className="text-sm font-semibold text-slate-400">MXN</span></p>
+                  <p className={`${JAKARTA} text-3xl font-extrabold text-emerald-500 tabular-nums`}>${caso.monto_reclamado?.toLocaleString()} <span className="text-sm font-semibold text-slate-400">MXN</span></p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7">
               <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                <FileText size={13} className="text-gold-600" /> Bitácora del Siniestro
+                <Icon name="description" size={16} className="text-gold-600" /> Bitácora del Siniestro
               </h3>
               <div className="space-y-4">
                 {[
-                  { icon: Calendar, label: "Fecha del incidente", value: new Date(caso.fecha_reclamacion).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }) },
-                  { icon: MapPin,   label: "Lugar reportado",     value: caso.lugar_incidente || "Ubicación ShieldBD" },
-                ].map(({ icon: Icon, label, value }, i) => (
+                  { icon: "calendar_month", label: "Fecha del incidente", value: new Date(caso.fecha_reclamacion).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" }) },
+                  { icon: "location_on",    label: "Lugar reportado",     value: caso.lugar_incidente || "Ubicación ShieldBD" },
+                ].map(({ icon, label, value }, i) => (
                   <div key={i} className="flex items-center gap-4 px-4 py-3.5 bg-white/55 border border-white/50 rounded-2xl">
                     <div className="w-9 h-9 rounded-xl bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] flex items-center justify-center shrink-0">
-                      <Icon size={15} className="text-slate-400" />
+                      <Icon name={icon} size={17} className="text-slate-400" />
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
@@ -351,9 +344,9 @@ export default function DetalleCasoForense() {
                 </div>
               )}
               <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-7 relative overflow-hidden">
-                <div className="absolute -top-8 -right-8 opacity-[0.03] pointer-events-none"><BrainCircuit size={160} /></div>
+                <Icon name="psychology" size={160} className="absolute -top-8 -right-8 opacity-[0.03] pointer-events-none" />
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-5">
-                  <MessageSquareQuote size={13} className="text-gold-600" /> Justificación Técnica del Modelo
+                  <Icon name="format_quote" size={16} className="text-gold-600" /> Justificación Técnica del Modelo
                 </h3>
                 <div className="bg-gold-50 border border-gold-100 rounded-2xl p-5 mb-5">
                   <p className="text-sm text-slate-600 leading-relaxed italic">"{caso.justificacion_ia || "El modelo no ha generado una justificación descriptiva para este expediente."}"</p>
@@ -368,19 +361,20 @@ export default function DetalleCasoForense() {
             <div className="flex flex-col gap-4">
               <div className="bg-navy/90 backdrop-blur-xl rounded-[28px] p-7 text-white sticky top-6 space-y-6">
                 <div className="flex items-center gap-2">
-                  <Fingerprint size={18} className="text-gold-400" />
+                  <Icon name="fingerprint" size={20} className="text-gold-400" />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">AutoML Analysis</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1">Score de confianza</p>
-                  <p className="text-4xl font-extrabold tabular-nums">{automlPct.toFixed(1)}%</p>
+                  <p className={`${JAKARTA} text-4xl font-extrabold tabular-nums`}>{automlPct.toFixed(1)}%</p>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full bg-gold-400 rounded-full transition-[width] duration-700" style={{ width: `${automlPct}%` }} />
                 </div>
                 <div className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs font-bold
                   ${firstEvid?.deteccion_edicion ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
-                  {firstEvid?.deteccion_edicion ? <><AlertTriangle size={14} /> Manipulación detectada</> : <><ShieldCheck size={14} /> Imagen verificada</>}
+                  <Icon name={firstEvid?.deteccion_edicion ? 'warning' : 'verified_user'} size={16} />
+                  {firstEvid?.deteccion_edicion ? "Manipulación detectada" : "Imagen verificada"}
                 </div>
                 <div className="h-px bg-white/10" />
                 <div className="bg-black/20 rounded-2xl p-4 border border-white/5">
@@ -394,26 +388,26 @@ export default function DetalleCasoForense() {
 
         {/* ── PANEL DE RESOLUCIÓN ── */}
         <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-[28px] p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none"><Scale size={120} /></div>
+          <Icon name="balance" size={120} className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none" />
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-6">
-              <Scale size={15} className="text-slate-400" />
+              <Icon name="balance" size={17} className="text-slate-400" />
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Dictamen Oficial del Ajustador</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <button disabled={updating} onClick={() => setConfirmKey("aprobar")}
                 className="py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white border border-emerald-100 hover:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50">
-                {updating ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                <Icon name={updating ? 'progress_activity' : 'check_circle'} size={17} className={updating ? 'animate-spin' : ''} />
                 Aprobar Caso
               </button>
               <button disabled={updating} onClick={() => setConfirmKey("fraude")}
                 className="py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-100 hover:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50">
-                {updating ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
+                <Icon name={updating ? 'progress_activity' : 'cancel'} size={17} className={updating ? 'animate-spin' : ''} />
                 Confirmar Fraude
               </button>
               <button disabled={updating} onClick={() => setConfirmKey("escalar")}
                 className="py-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50 bg-amber-50 hover:bg-amber-400 text-amber-600 hover:text-white border border-amber-100 hover:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50">
-                <AlertTriangle size={15} />
+                <Icon name="warning" size={17} />
                 Escalar Caso
               </button>
             </div>

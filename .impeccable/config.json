@@ -17,6 +17,12 @@
         "value": "inter",
         "createdAt": "2026-09-03T17:01:52.920Z",
         "reason": "Inter is the app's pre-existing typeface, already loaded (imperfectly, via duplicated useEffects) across all 6 screens before this redesign; consolidating it into index.html preserves the established brand choice rather than introducing a new generic default"
+      },
+      {
+        "rule": "overused-font",
+        "value": "plus jakarta sans",
+        "createdAt": "2026-09-03T22:17:59.969Z",
+        "reason": "user confirmed: user explicitly asked to match the reference mockup's font pairing (Plus Jakarta Sans + Inter) for ClientPortal.tsx redesign"
       }
     ]
   }

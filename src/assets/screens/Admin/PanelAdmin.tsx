@@ -4,12 +4,6 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useUser } from '../../../context/useUser';
 import { useDismissableModal } from '../../components/useDismissableModal';
 import PageBackground from '../../components/PageBackground';
-import {
-  Shield, Users, LogOut, Plus, MoreVertical,
-  BarChart2, X, Search, Download,
-  CheckCircle, AlertCircle, CheckCircle2, XCircle, User, ChevronRight, ChevronLeft,
-  FileText, UserCheck, UserCog, ShieldCheck, Activity,
-} from 'lucide-react';
 
 /**
  * Design system for this module (documented shape/color scale — impeccable "Operate" mode +
@@ -17,8 +11,18 @@ import {
  *   Radius  → rounded-3xl: panels/cards/modals · rounded-2xl: icon/avatar badges · rounded-xl: buttons/inputs/nav items · rounded-full: pills/dots/status
  *   Color   → navy: marca/selección · dorado: CTA sobre navy + valor/IA · azul: reservado a tips · emerald/red: solo estado semántico (activo/inactivo, éxito/error)
  *   Surface → glass: bg-white/85 backdrop-blur-xl border border-white/70 sobre PageBackground (Fondo3)
+ *   Type    → headline-lg (Plus Jakarta Sans) para títulos, Inter para cuerpo
+ *   Iconos  → Material Symbols Outlined (misma familia que ClientPortal.tsx / EstatusReclamos.tsx)
  *   Motion  → Tailwind utilities only (transition/duration/ease + active:scale), sin CSS nuevo
  */
+
+const JAKARTA = "font-['Plus_Jakarta_Sans']";
+const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";
+
+/* ─── Icon helper ── */
+const Icon = ({ name, className = '', size = 16 }: { name: string; className?: string; size?: number }) => (
+  <span className={`material-symbols-outlined ${className}`} style={{ fontSize: size }}>{name}</span>
+);
 
 /* ─── Interfaces ── */
 interface Ajustador {
@@ -69,8 +73,8 @@ const KPI_TONES: Record<KpiTone, { bg: string; icon: string; bar: string }> = {
   blue:    { bg: 'bg-blue-50',     icon: 'text-blue-500',    bar: 'bg-blue-400' },
 };
 
-const KpiCard = ({ icon: Icon, label, value, sub, fill, tone }: {
-  icon: any; label: string; value: string | number; sub: string; fill: number; tone: KpiTone;
+const KpiCard = ({ icon, label, value, sub, fill, tone }: {
+  icon: string; label: string; value: string | number; sub: string; fill: number; tone: KpiTone;
 }) => {
   const t = KPI_TONES[tone];
   return (
@@ -78,10 +82,10 @@ const KpiCard = ({ icon: Icon, label, value, sub, fill, tone }: {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">{label}</p>
-          <h3 className="text-3xl font-extrabold text-navy mt-1 tabular-nums">{value}</h3>
+          <h3 className={`${JAKARTA} text-3xl font-extrabold text-navy mt-1 tabular-nums`}>{value}</h3>
         </div>
         <div className={`w-10 h-10 rounded-2xl ${t.bg} flex items-center justify-center shrink-0`}>
-          <Icon size={17} className={t.icon} strokeWidth={2.25} />
+          <Icon name={icon} size={19} className={t.icon} />
         </div>
       </div>
       <div className="mt-4 pt-3 border-t border-slate-100">
@@ -131,7 +135,7 @@ const DonutChart = ({ ajustadores, clientes }: { ajustadores: number; clientes: 
           <Tooltip content={<DonutTooltip />} />
         </PieChart>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-xl font-extrabold text-navy leading-none tabular-nums">{total}</span>
+          <span className={`${JAKARTA} text-xl font-extrabold text-navy leading-none tabular-nums`}>{total}</span>
           <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mt-1">Usuarios</span>
         </div>
       </div>
@@ -169,8 +173,8 @@ const RecentActivity = ({ logs }: { logs: LogForense[] }) => {
   return (
     <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex-1 flex flex-col justify-between">
       <div>
-        <h4 className="text-sm font-bold text-navy flex items-center gap-2">
-          <Activity size={14} className="text-gold-600" /> Auditoría en Tiempo Real
+        <h4 className={`${JAKARTA} text-sm font-bold text-navy flex items-center gap-2`}>
+          <Icon name="monitor_heart" size={16} className="text-gold-600" /> Auditoría en Tiempo Real
         </h4>
         <p className="text-xs text-slate-400 mt-0.5 mb-4">Últimos eventos del sistema</p>
         <div className="space-y-2.5">
@@ -182,7 +186,7 @@ const RecentActivity = ({ logs }: { logs: LogForense[] }) => {
                 <div className="flex items-start gap-3 min-w-0">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5
                     ${log.resultado === 'exito' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                    {log.resultado === 'exito' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                    <Icon name={log.resultado === 'exito' ? 'check_circle' : 'error'} size={15} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-navy leading-snug truncate">{log.accion_realizada}</p>
@@ -218,12 +222,10 @@ const ResultModal = ({ success, message, onClose }: { success: boolean; message:
         className={`bg-white/85 backdrop-blur-xl border border-white/70 rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center space-y-5 transition-[transform,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-opacity motion-reduce:scale-100 ${visible ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border
           ${success ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-          {success
-            ? <CheckCircle2 size={30} className="text-emerald-400" />
-            : <XCircle      size={30} className="text-red-400" />}
+          <Icon name={success ? 'check_circle' : 'cancel'} size={30} className={success ? 'text-emerald-400' : 'text-red-400'} />
         </div>
         <div>
-          <h3 id="admin-result-title" className="text-lg font-bold text-navy">{success ? 'Operación exitosa' : 'Algo salió mal'}</h3>
+          <h3 id="admin-result-title" className={`${JAKARTA} text-lg font-bold text-navy`}>{success ? 'Operación exitosa' : 'Algo salió mal'}</h3>
           <p className="text-sm text-slate-400 mt-1 leading-relaxed">{message}</p>
         </div>
         <button onClick={() => dismiss()}
@@ -358,8 +360,8 @@ const AdminPanel = () => {
   const cliActivos    = clientes.filter(c => !c.is_deleted).length;
 
   const TABS = [
-    { id: 'resumen',  label: 'Resumen',  icon: BarChart2 },
-    { id: 'usuarios', label: 'Usuarios', icon: Users      },
+    { id: 'resumen',  label: 'Resumen',  icon: 'bar_chart' },
+    { id: 'usuarios', label: 'Usuarios', icon: 'group'      },
   ] as const;
 
   const PLAN_OPTIONS = [
@@ -408,7 +410,7 @@ const AdminPanel = () => {
 
   return (
     <PageBackground>
-    <div className="min-h-screen font-sans text-navy">
+    <div className="min-h-screen font-sans text-navy" style={{ fontFamily: FONT }}>
       <div className="max-w-[1580px] mx-auto p-4 md:p-6 lg:p-8 space-y-6">
 
         {/* ── RESULT MODAL ── */}
@@ -428,16 +430,16 @@ const AdminPanel = () => {
               <div className="flex justify-between items-start mb-7">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-2xl bg-navy text-white flex items-center justify-center shrink-0">
-                    <User size={16} className="text-gold-400" />
+                    <Icon name="person" size={18} className="text-gold-400" />
                   </div>
                   <div>
-                    <h2 id="registro-modal-title" className="text-base font-bold text-navy">Registrar Nuevo Usuario</h2>
+                    <h2 id="registro-modal-title" className={`${JAKARTA} text-base font-bold text-navy`}>Registrar Nuevo Usuario</h2>
                     <p className="text-xs text-slate-400 mt-0.5">Añade un ajustador forense o un cliente asegurado</p>
                   </div>
                 </div>
                 <button onClick={() => registroModal.dismiss()} aria-label="Cerrar"
                   className="w-8 h-8 rounded-2xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-                  <X size={14} />
+                  <Icon name="close" size={15} />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -458,7 +460,7 @@ const AdminPanel = () => {
                 <div>
                   <label className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1.5">Nombre completo</label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                    <Icon name="person" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
                     <input type="text" value={formData.nombre} required onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                       className="w-full pl-10 pr-4 py-3 bg-white/60 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all" />
                   </div>
@@ -517,10 +519,10 @@ const AdminPanel = () => {
                 <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full border border-white/5" />
                 <button onClick={() => polizaModal.dismiss()} aria-label="Cerrar"
                   className="absolute top-4 right-4 w-7 h-7 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
-                  <X size={13} className="text-white/60" />
+                  <Icon name="close" size={14} className="text-white/60" />
                 </button>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30 mb-1">ShieldLens Admin</p>
-                <h3 id="poliza-modal-title" className="text-xl font-bold text-white">Vincular Póliza</h3>
+                <h3 id="poliza-modal-title" className={`${JAKARTA} text-xl font-bold text-white`}>Vincular Póliza</h3>
               </div>
               <div className="px-7 py-6 space-y-5">
                 <div className="flex items-center gap-3 bg-white/60 border border-white/60 rounded-2xl px-4 py-3">
@@ -547,18 +549,18 @@ const AdminPanel = () => {
                             </div>
                             <span className={`text-sm font-semibold ${polizaData.tipo_seguro === plan.value ? 'text-white' : 'text-navy'}`}>{plan.label}</span>
                           </div>
-                          <ChevronRight size={14} className={polizaData.tipo_seguro === plan.value ? 'text-white/40' : 'text-slate-300'} />
+                          <Icon name="chevron_right" size={15} className={polizaData.tipo_seguro === plan.value ? 'text-white/40' : 'text-slate-300'} />
                         </button>
                       ))}
                     </div>
                   </div>
                   <div className="flex items-start gap-3 bg-gold-50 border border-gold-100 rounded-2xl p-4">
-                    <FileText size={14} className="text-gold-500 shrink-0 mt-0.5" />
+                    <Icon name="description" size={15} className="text-gold-500 shrink-0 mt-0.5" />
                     <p className="text-[11px] text-gold-700 leading-relaxed">Al confirmar, se generará el número de póliza y se notificará al cliente.</p>
                   </div>
                   <button type="submit"
                     className="w-full py-3.5 bg-navy hover:bg-navy-dark text-white font-semibold rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                    <Shield size={15} /> Confirmar Póliza
+                    <Icon name="shield" size={17} /> Confirmar Póliza
                   </button>
                 </form>
               </div>
@@ -570,7 +572,7 @@ const AdminPanel = () => {
         <header ref={topRef} className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-navy flex items-center justify-center shrink-0 shadow-sm ring-4 ring-white/30">
-              <ShieldCheck size={18} className="text-gold-400" strokeWidth={2.25} />
+              <Icon name="verified_user" size={20} className="text-gold-400" />
             </div>
             <div className="hidden sm:flex items-center gap-2 bg-white/70 backdrop-blur-xl px-3 py-1.5 rounded-2xl border border-white/60">
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-emerald-100" />
@@ -579,11 +581,11 @@ const AdminPanel = () => {
           </div>
 
           <nav className="bg-white/70 backdrop-blur-xl p-1.5 rounded-full border border-white/60 flex items-center gap-1">
-            {TABS.map(({ id, label, icon: Icon }) => (
+            {TABS.map(({ id, label, icon }) => (
               <button key={id} onClick={() => goToTab(id)}
                 className={`px-5 py-1.5 text-xs md:text-sm font-semibold rounded-full transition duration-150 flex items-center gap-1.5
                   ${activeTab === id ? 'bg-navy text-white shadow-sm' : 'text-navy/50 hover:text-navy hover:bg-white/60'}`}>
-                <Icon size={13} className={activeTab === id ? 'text-gold-400' : ''} /> {label}
+                <Icon name={icon} size={15} className={activeTab === id ? 'text-gold-400' : ''} /> {label}
               </button>
             ))}
           </nav>
@@ -591,19 +593,19 @@ const AdminPanel = () => {
           <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
             <button onClick={() => setShowModal(true)}
               className="bg-navy hover:bg-navy-dark text-white text-xs md:text-sm font-semibold px-4 py-2 rounded-2xl shadow-sm flex items-center gap-1.5 transition active:scale-95">
-              <Plus size={15} className="text-gold-400" /> Nuevo Usuario
+              <Icon name="add" size={17} className="text-gold-400" /> Nuevo Usuario
             </button>
             <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-xl p-1 rounded-2xl border border-white/60">
               <button onClick={focusSearch} aria-label="Buscar usuarios" title="Buscar usuarios"
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-navy/50 hover:bg-white/70 hover:text-navy transition">
-                <Search size={15} />
+                <Icon name="search" size={17} />
               </button>
               <div className="w-8 h-8 rounded-xl bg-navy text-white flex items-center justify-center text-xs font-bold" title={userName || 'Administrador'}>
                 {initials}
               </div>
               <button onClick={() => navigate('/')} aria-label="Cerrar sesión" title="Cerrar sesión"
                 className="w-8 h-8 rounded-xl flex items-center justify-center text-navy/50 hover:bg-red-50 hover:text-red-500 transition">
-                <LogOut size={14} />
+                <Icon name="logout" size={16} />
               </button>
             </div>
           </div>
@@ -612,7 +614,7 @@ const AdminPanel = () => {
         {/* ── GREETING ── */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 pt-2">
           <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-navy tracking-tight">Buen día, {userName?.split(' ')[0] || 'Administrador'}</h1>
+            <h1 className={`${JAKARTA} text-2xl md:text-3xl font-extrabold text-navy tracking-tight`}>Buen día, {userName?.split(' ')[0] || 'Administrador'}</h1>
             <p className="text-sm md:text-base text-navy/50 mt-0.5">Actividades y estado operativo del sistema.</p>
           </div>
           <div className="flex items-center gap-2 text-xs font-medium text-navy/50">
@@ -626,16 +628,16 @@ const AdminPanel = () => {
 
         {/* ── TOP KPI GRID ── */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard icon={Users} label="Total Usuarios" value={loading ? '—' : totalUsuarios}
+          <KpiCard icon="group" label="Total Usuarios" value={loading ? '—' : totalUsuarios}
             sub={loading ? 'Cargando...' : `${ajActivos + cliActivos} activos de ${totalUsuarios}`}
             fill={pct(ajActivos + cliActivos, totalUsuarios)} tone="navy" />
-          <KpiCard icon={UserCog} label="Ajustadores" value={loading ? '—' : ajustadores.length}
+          <KpiCard icon="manage_accounts" label="Ajustadores" value={loading ? '—' : ajustadores.length}
             sub={loading ? 'Cargando...' : `${pct(ajustadores.length, totalUsuarios)}% del total`}
             fill={pct(ajustadores.length, totalUsuarios)} tone="gold" />
-          <KpiCard icon={UserCheck} label="Clientes Asegurados" value={loading ? '—' : clientes.length}
+          <KpiCard icon="how_to_reg" label="Clientes Asegurados" value={loading ? '—' : clientes.length}
             sub={loading ? 'Cargando...' : `${pct(clientes.length, totalUsuarios)}% del total`}
             fill={pct(clientes.length, totalUsuarios)} tone="emerald" />
-          <KpiCard icon={FileText} label="Registros Forenses" value={loading ? '—' : logs.length}
+          <KpiCard icon="description" label="Registros Forenses" value={loading ? '—' : logs.length}
             sub={loading ? 'Cargando...' : `${logs.filter(l => l.resultado === 'exito').length} exitosos`}
             fill={pct(logs.filter(l => l.resultado === 'exito').length, logs.length || 1)} tone="blue" />
         </section>
@@ -661,13 +663,13 @@ const AdminPanel = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
-                    <Search size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <Icon name="search" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
                     <input ref={searchInputRef} type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nombre..."
                       className="pl-9 pr-4 py-2.5 bg-white/60 border border-white/60 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-navy/10 transition-all placeholder:text-slate-400 w-56 md:w-64" />
                   </div>
                   <button onClick={() => exportCSV(rawList, viewMode)} title="Exportar reporte CSV"
                     className="p-2.5 bg-white/55 hover:bg-white/75 border border-slate-200 text-slate-600 rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30">
-                    <Download size={15} />
+                    <Icon name="download" size={17} />
                   </button>
                 </div>
               </div>
@@ -751,7 +753,7 @@ const AdminPanel = () => {
                                   {tienePoliza(item as Cliente) ? 'Vincular' : 'Asignar Ahora'}
                                 </button>
                                 <button aria-label="Más opciones" className="text-slate-400 hover:text-slate-600 inline-flex">
-                                  <MoreVertical size={14} />
+                                  <Icon name="more_vert" size={16} />
                                 </button>
                               </td>
                             )}
@@ -773,7 +775,7 @@ const AdminPanel = () => {
                     <div className="flex items-center gap-1">
                       <button onClick={() => setTablePage(p => Math.max(0, p - 1))} disabled={tablePage === 0}
                         className="px-2.5 py-1 rounded-lg border border-white/60 bg-white/60 text-navy hover:bg-white/80 disabled:opacity-40 transition">
-                        <ChevronLeft size={13} />
+                        <Icon name="chevron_left" size={15} />
                       </button>
                       {Array.from({ length: totalTablePages }).map((_, i) => (
                         <button key={i} onClick={() => setTablePage(i)}
@@ -783,7 +785,7 @@ const AdminPanel = () => {
                       ))}
                       <button onClick={() => setTablePage(p => Math.min(totalTablePages - 1, p + 1))} disabled={tablePage === totalTablePages - 1}
                         className="px-2.5 py-1 rounded-lg border border-white/60 bg-white/60 text-navy hover:bg-white/80 disabled:opacity-40 transition">
-                        <ChevronRight size={13} />
+                        <Icon name="chevron_right" size={15} />
                       </button>
                     </div>
                   )}
@@ -796,7 +798,7 @@ const AdminPanel = () => {
               <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-1">
                   <div>
-                    <h4 className="text-sm font-bold text-navy flex items-center gap-2"><Users size={14} className="text-gold-600" /> Distribución de Usuarios</h4>
+                    <h4 className={`${JAKARTA} text-sm font-bold text-navy flex items-center gap-2`}><Icon name="group" size={16} className="text-gold-600" /> Distribución de Usuarios</h4>
                     <p className="text-xs text-slate-400 mt-0.5">Ajustadores vs. Clientes Asegurados</p>
                   </div>
                 </div>
@@ -818,7 +820,7 @@ const AdminPanel = () => {
               <div className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h4 className="text-sm font-bold text-navy flex items-center gap-2"><BarChart2 size={14} className="text-gold-600" /> Actividad Forense</h4>
+                    <h4 className={`${JAKARTA} text-sm font-bold text-navy flex items-center gap-2`}><Icon name="bar_chart" size={16} className="text-gold-600" /> Actividad Forense</h4>
                     <p className="text-xs text-slate-400 mt-0.5">Registros por día de la semana</p>
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl uppercase tracking-widest">{logs.length} eventos</span>
@@ -849,14 +851,14 @@ const AdminPanel = () => {
             {/* Distribución de pólizas */}
             <section className="bg-white/85 backdrop-blur-xl border border-white/70 shadow-[0_10px_30px_-12px_rgba(11,30,61,0.18)] rounded-3xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-navy flex items-center gap-2"><Shield size={14} className="text-gold-600" /> Distribución de Pólizas</h4>
+                <h4 className={`${JAKARTA} text-sm font-bold text-navy flex items-center gap-2`}><Icon name="shield" size={16} className="text-gold-600" /> Distribución de Pólizas</h4>
                 <span className="text-xs font-semibold text-slate-400">{clientes.length} clientes</span>
               </div>
               <div className="p-4 rounded-2xl bg-white/60 border border-white/50 mb-5">
                 <div className="flex items-baseline justify-between">
                   <div>
                     <span className="text-xs uppercase font-medium text-slate-400">Pólizas asignadas</span>
-                    <div className="text-2xl font-extrabold text-navy mt-0.5 tabular-nums">{clientesConPoliza} <span className="text-sm font-normal text-slate-500">de {clientes.length}</span></div>
+                    <div className={`${JAKARTA} text-2xl font-extrabold text-navy mt-0.5 tabular-nums`}>{clientesConPoliza} <span className="text-sm font-normal text-slate-500">de {clientes.length}</span></div>
                   </div>
                   <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs">{pct(clientesConPoliza, policyDenominator)}%</span>
                 </div>
