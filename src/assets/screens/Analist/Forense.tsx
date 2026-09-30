@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart as ReBarChart, Bar, XAxis, CartesianGrid, Tooltip as RechartsTooltip, Cell, ResponsiveContainer } from 'recharts';
 import RadialGauge from '../../components/RadialGauge';
 import PageBackground from '../../components/PageBackground';
+import { API_BASE_URL } from '../../../config/api';
 
 const JAKARTA = "font-['Plus_Jakarta_Sans']";
 const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";
@@ -227,7 +228,7 @@ const ForensicPanel = () => {
   const fetchCases = async () => {
     setLoading(true);
     try {
-      const res  = await fetch('http://localhost:5000/api/incidentes/general', {
+      const res  = await fetch(`${API_BASE_URL}/api/incidentes/general`, {
         headers: { 'x-auth-token': localStorage.getItem('token') || '' },
       });
       const json = await res.json();

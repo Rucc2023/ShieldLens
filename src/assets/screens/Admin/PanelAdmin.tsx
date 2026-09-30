@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { useUser } from '../../../context/useUser';
 import { useDismissableModal } from '../../components/useDismissableModal';
 import PageBackground from '../../components/PageBackground';
+import { API_BASE_URL } from '../../../config/api';
 
 /**
  * Design system for this module (documented shape/color scale — impeccable "Operate" mode +
@@ -285,9 +286,9 @@ const AdminPanel = () => {
     setLoading(true);
     try {
       const [resAju, resCli, resLogs] = await Promise.all([
-        fetch('http://localhost:5000/api/auth/ajustadores'),
-        fetch('http://localhost:5000/api/auth/clientes'),
-        fetch('http://localhost:5000/api/auth/logs'),
+        fetch(`${API_BASE_URL}/api/auth/ajustadores`),
+        fetch(`${API_BASE_URL}/api/auth/clientes`),
+        fetch(`${API_BASE_URL}/api/auth/logs`),
       ]);
       if (resAju.ok)  setAjustadores(await resAju.json());
       if (resCli.ok)  setClientes(await resCli.json());
@@ -306,7 +307,7 @@ const AdminPanel = () => {
     e.preventDefault();
     const token    = localStorage.getItem('token');
     const headers  = { 'Content-Type': 'application/json', 'x-auth-token': token || '' };
-    const endpoint = viewMode === 'ajustadores' ? 'http://localhost:5000/api/auth/ajustadores' : 'http://localhost:5000/api/auth/register';
+    const endpoint = viewMode === 'ajustadores' ? `${API_BASE_URL}/api/auth/ajustadores` : `${API_BASE_URL}/api/auth/register`;
     try {
       const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(formData) });
       if (res.ok) {
@@ -325,7 +326,7 @@ const AdminPanel = () => {
   const handleAsignarPoliza = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/asignar-poliza', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/asignar-poliza`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
         body: JSON.stringify({ id_cliente: selectedCliente?.id_cliente, ...polizaData }),

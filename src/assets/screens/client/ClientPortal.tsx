@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageBackground from '../../components/PageBackground';
+import { API_BASE_URL } from '../../../config/api';
 import {
   Plus, ShieldCheck, Zap, FileText, LogOut,
   ChevronRight, ChevronLeft, Loader2,
@@ -64,8 +65,8 @@ const ClientPortal = () => {
       const headers = { 'x-auth-token': token || '' };
       try {
         const [resC, resP] = await Promise.all([
-          fetch('http://localhost:5000/api/incidentes/mis-reclamaciones', { headers }),
-          fetch('http://localhost:5000/api/incidentes/perfil-cliente',    { headers }),
+          fetch(`${API_BASE_URL}/api/incidentes/mis-reclamaciones`, { headers }),
+          fetch(`${API_BASE_URL}/api/incidentes/perfil-cliente`,    { headers }),
         ]);
         const [jsonC, jsonP] = await Promise.all([resC.json(), resP.json()]);
         if (jsonC.success) setClaims(jsonC.data);

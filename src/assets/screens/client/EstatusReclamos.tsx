@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageBackground from '../../components/PageBackground';
+import { API_BASE_URL } from '../../../config/api';
 
 const JAKARTA = "font-['Plus_Jakarta_Sans']";
 
@@ -40,8 +41,8 @@ const ClaimStatus = () => {
       const headers = { 'x-auth-token': localStorage.getItem('token') || '' };
       try {
         const [resC, resP] = await Promise.all([
-          fetch(`http://localhost:5000/api/incidentes/detalle/${id}`, { headers }),
-          fetch('http://localhost:5000/api/incidentes/perfil-cliente', { headers }),
+          fetch(`${API_BASE_URL}/api/incidentes/detalle/${id}`, { headers }),
+          fetch(`${API_BASE_URL}/api/incidentes/perfil-cliente`, { headers }),
         ]);
         const [jsonC, jsonP] = await Promise.all([resC.json(), resP.json()]);
         if (jsonC.success) setClaim(jsonC.data);

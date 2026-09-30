@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RadialGauge from '../../components/RadialGauge';
 import PageBackground from '../../components/PageBackground';
+import { API_BASE_URL } from '../../../config/api';
 import {
   ArrowLeft, ArrowRight, CheckCircle2,
   ShieldCheck, Upload, X,
@@ -257,7 +258,7 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
           reader.onerror = rej;
         });
 
-        const response = await fetch('http://localhost:5000/api/ia/analizar', {
+        const response = await fetch(`${API_BASE_URL}/api/ia/analizar`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
           body: JSON.stringify({ imageBase64: base64 }),
@@ -288,7 +289,7 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
       formData.append('lugar_incidente',         data.location);
       formData.append('justificacion_ia',        result.justificacion || '');
 
-      const response = await fetch('http://localhost:5000/api/incidentes/crear', {
+      const response = await fetch(`${API_BASE_URL}/api/incidentes/crear`, {
         method: 'POST',
         headers: { 'x-auth-token': localStorage.getItem('token') || '' },
         body: formData,

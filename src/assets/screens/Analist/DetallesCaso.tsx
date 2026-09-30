@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import RadialGauge from "../../components/RadialGauge";
 import { useDismissableModal } from "../../components/useDismissableModal";
 import PageBackground from "../../components/PageBackground";
+import { API_BASE_URL } from "../../../config/api";
 
 const JAKARTA = "font-['Plus_Jakarta_Sans']";
 const FONT = "'Inter', ui-sans-serif, system-ui, sans-serif";
@@ -132,7 +133,7 @@ export default function DetalleCasoForense() {
 
   const fetchDetalle = async () => {
     try {
-      const res  = await fetch(`http://localhost:5000/api/incidentes/detalle-forense/${id}`, {
+      const res  = await fetch(`${API_BASE_URL}/api/incidentes/detalle-forense/${id}`, {
         headers: { "x-auth-token": localStorage.getItem("token") || "" },
       });
       const json = await res.json();
@@ -150,7 +151,7 @@ export default function DetalleCasoForense() {
     setConfirmKey(null);
     setUpdating(true);
     try {
-      const res  = await fetch(`http://localhost:5000/api/incidentes/actualizar-estado/${id}`, {
+      const res  = await fetch(`${API_BASE_URL}/api/incidentes/actualizar-estado/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "x-auth-token": localStorage.getItem("token") || "" },
         body: JSON.stringify({ decision: decisionKey }),

@@ -5,6 +5,7 @@ import axios, { AxiosError } from 'axios';import {
   X, User, Phone, CheckCircle2, MapPin
 } from 'lucide-react';
 import { useUser } from '../../context/useUser';
+import { API_BASE_URL } from '../../config/api';
 
 const LoginScreen = () => {
   //const [email, setEmail]       = useState('');
@@ -28,7 +29,7 @@ const LoginScreen = () => {
 const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         identificador: identificador, 
         password: password
       });
@@ -63,7 +64,7 @@ const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       // Mapeo de campos hacia el Backend para coincidir con la BD
-      const response = await fetch('http://localhost:5000/api/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
