@@ -261,7 +261,10 @@ const StepAI = ({ files, data, onNext, onBack }: { files: File[]; data: ClaimDat
         const response = await fetch(`${API_BASE_URL}/api/ia/analizar`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') || '' },
-          body: JSON.stringify({ imageBase64: base64 }),
+          body: JSON.stringify({
+            imageBase64: base64,
+            mimeType: files[0].type || 'image/jpeg',
+          }),
         });
 
         const resData = await response.json();
